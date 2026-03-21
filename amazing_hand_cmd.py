@@ -51,10 +51,10 @@ DEFAULT_PORT_WINDOWS = "COM9"
 DEFAULT_BAUDRATE = 1_000_000
 
 # Servo IDs for each finger position (matches GUI finger order):
-#   Ring(1,2), Middle(3,4), Pointer(5,6), Thumb(7,8)
+#   Ring(5,6), Middle(3,4), Pointer(1,2), Thumb(7,8)
 # positions[idx*2] → servo1_id, positions[idx*2+1] → servo2_id
 FINGER_NAMES = ["Ring", "Middle", "Pointer", "Thumb"]
-SERVO_PAIRS = [(1, 2), (3, 4), (5, 6), (7, 8)]  # (servo1_id, servo2_id) per finger
+SERVO_PAIRS = [(5, 6), (3, 4), (1, 2), (7, 8)]  # (servo1_id, servo2_id) per finger
 
 
 # ---------------------------------------------------------------------------

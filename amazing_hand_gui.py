@@ -55,7 +55,7 @@ KEY COMPONENTS:
 SERVO MAPPING:
 ==============
 Servo 1: Pointer finger position (0=open, 110=closed)
-Servo 2: Pointer finger side (-20=left, 0=center, +20=right)
+Servo 2: Pointer finger side (-40=left, 0=center, +40=right)
 Servo 3: Middle finger position
 Servo 4: Middle finger side
 Servo 5: Ring finger position  
@@ -109,6 +109,7 @@ import matplotlib.dates as mdates
 APP_VERSION = "0.7"
 from datetime import datetime
 import yaml
+import re
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -140,7 +141,7 @@ KEYBOARD_HELP_TEXT = dedent(
             Ctrl + Key    10° per keypress (fast movement)
 
         EXAMPLES:
-            Press 1       → Select Pointer finger
+            Press 1       → Select Ring finger
             Press ↑       → Close 1° (precise)
             Shift + ↑     → Close 5° (normal)
             Ctrl + ↑      → Close 10° (fast)
@@ -304,7 +305,6 @@ def save_config(config):
         yaml_str = yaml.dump(config, default_flow_style=False, sort_keys=False)
         
         # Replace positions lists with flow style
-        import re
         def replace_positions(match):
             # Extract the positions values from the multi-line list
             lines = match.group(0)
@@ -511,14 +511,14 @@ class FingerControl:
     
     Attributes:
         pos_var (IntVar): Close/open position (0-110)
-        side_var (IntVar): Side offset (-20 to +20)
+        side_var (IntVar): Side offset (-40 to +40)
         speed_var (StringVar): Servo speed selection (1-6)
         mimic_var (BooleanVar): Mimic mode enabled
     
     Note: Even servo IDs have inverted angles in hardware.
     """
     
-    def __init__(self, parent, finger_name, servo1_id, servo2_id, controller, update_callback, invert_side=False):
+    def __init__(self, parent, finger_name, servo1_id, servo2_id, controller, update_callback, invert_side=False, app_config=None):
         self.servo1_id = servo1_id
         self.servo2_id = servo2_id
         self.controller = controller
@@ -530,8 +530,8 @@ class FingerControl:
         self._led_blink_job = None
         self._led_on = False
         
-        # Load app config for defaults
-        self.app_config = load_app_config()
+        # Use provided config or load from file
+        self.app_config = app_config if app_config is not None else load_app_config()
         
         # Create frame for this finger
         # Layout: Grid with 2 columns
@@ -979,14 +979,14 @@ class AmazingHandGUI:
     
     Layout Structure:
         Left Panel:
-            Row 0-1: Finger controls (4 fingers in 2x2 grid)
-            Row 2: Control panels stacked vertically:
+            Row 0: Title bar
+            Row 1: Finger controls (Ring, Middle, Pointer in a row)
+            Row 2: Thumb + stacked control panels:
                 - Connection Management
                 - Global Controls
                 - Pose Management
                 - Sequence Player
-            Row 5: Status bar
-            Row 6: Execution log (expandable)
+            Bottom: Status bar + Execution log (expandable)
         
         Right Panel:
             - Servo monitoring chart with metric selection
@@ -1009,7 +1009,7 @@ class AmazingHandGUI:
     Attributes:
         controller (Scs0009PyController): Servo controller instance
         connected (bool): Connection state
-        fingers (list): FingerControl instances [pointer, middle, ring, thumb]
+        fingers (list): FingerControl instances [ring, middle, pointer, thumb]
         servo_data (dict): Telemetry time series for charting
         sequence_running (bool): True when sequence executing
     """
@@ -1203,7 +1203,7 @@ class AmazingHandGUI:
             
             finger = FingerControl(
                 parent, name, s1, s2, self.controller, self.on_finger_update,
-                invert_side=(idx == 3)
+                invert_side=(idx == 3), app_config=app_config
             )
             finger.frame.grid(row=row, column=col, columnspan=2, padx=3, pady=2, sticky='nsew')
             self.fingers.append(finger)
@@ -1246,7 +1246,6 @@ class AmazingHandGUI:
         
         ttk.Label(conn_row, text="Baud:").pack(side='left', padx=(5,2))
         self.baudrate_var = tk.StringVar(value=str(self.initial_baudrate))
-        app_config = load_app_config()
         baudrate_options = [str(b) for b in app_config['serial']['baudrate_options']]
         self.baudrate_combo = ttk.Combobox(
             conn_row, textvariable=self.baudrate_var, 
@@ -2873,7 +2872,6 @@ class AmazingHandGUI:
         # Select finger with keys 1-4 (use keysym so it works even when char is empty)
         if keysym in ('1', '2', '3', '4'):
             self.selected_finger_idx = int(keysym) - 1
-            self.kb_label.config(text=f"KB: {self.finger_names[self.selected_finger_idx]}")
             self.status_var.set(f"Selected: {self.finger_names[self.selected_finger_idx]}")
             return
         
@@ -3081,6 +3079,12 @@ class AmazingHandGUI:
             target_snapshot = list(positions)
             snapshot_tuple = tuple(target_snapshot)
 
+            # Capture current positions BEFORE overwriting for delay calculation
+            old_positions = []
+            for finger in self.fingers:
+                p1, p2 = finger.get_positions()
+                old_positions.extend([p1, p2])
+
             # Apply positions to fingers (keep current speeds)
             for idx, finger in enumerate(self.fingers):
                 pos1 = positions[idx * 2]
@@ -3095,7 +3099,7 @@ class AmazingHandGUI:
             self.status_var.set(f"Set pose '{selected_name}'")
             # Calculate delay: estimate movement time based on max position change
             # Speed ranges 1-6, assume ~200ms per 10° at speed 3
-            max_movement = max(abs(positions[i] - self.fingers[i//2].get_positions()[i%2]) for i in range(8))
+            max_movement = max(abs(positions[i] - old_positions[i]) for i in range(8))
             avg_speed = sum(f.get_speed() for f in self.fingers) / len(self.fingers)
             # Base delay + movement-dependent delay (slower speeds need more time)
             delay_ms = int(500 + (max_movement / 10) * (200 / avg_speed) * 3)
@@ -3333,17 +3337,23 @@ class AmazingHandGUI:
                     speeds_str = ','.join(map(str, speeds))
                     
                     delay = delay_var.get()
-                    if delay and float(delay) > 0:
-                        builder_listbox.insert(tk.END, f"{pose_name}:{speeds_str}|{delay}s")
-                    else:
+                    try:
+                        if delay and float(delay) > 0:
+                            builder_listbox.insert(tk.END, f"{pose_name}:{speeds_str}|{delay}s")
+                        else:
+                            builder_listbox.insert(tk.END, f"{pose_name}:{speeds_str}")
+                    except ValueError:
                         builder_listbox.insert(tk.END, f"{pose_name}:{speeds_str}")
             
             poses_listbox.bind('<Double-Button-1>', lambda e: add_to_builder())
             
             def add_delay():
                 delay = delay_var.get()
-                if delay and float(delay) > 0:
-                    builder_listbox.insert(tk.END, f"SLEEP:{delay}s")
+                try:
+                    if delay and float(delay) > 0:
+                        builder_listbox.insert(tk.END, f"SLEEP:{delay}s")
+                except ValueError:
+                    self.status_var.set("Invalid delay value")
             
             def remove_step():
                 selection = builder_listbox.curselection()
@@ -3414,7 +3424,7 @@ class AmazingHandGUI:
                 else:
                     current_seq_label.config(text="")
             
-            save_name_var.trace('w', on_name_change)
+            save_name_var.trace_add('write', on_name_change)
             
             name_entry = ttk.Entry(save_frame, textvariable=save_name_var, width=20)
             name_entry.pack(side='left', padx=5)

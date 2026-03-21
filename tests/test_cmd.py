@@ -212,15 +212,15 @@ class TestApplyPose:
         positions = [90] * 8
         cmd.apply_pose(ctrl, positions, [3] * 8)
         _, rads = ctrl.sync_write_goal_position.call_args[0]
-        # rads order follows SERVO_PAIRS = [(1,2),(3,4),(5,6),(7,8)]
-        # index 0 → servo 1 (odd) → +rad(90)
+        # rads order follows SERVO_PAIRS = [(5,6),(3,4),(1,2),(7,8)]
+        # index 0 → servo 5 (odd) → +rad(90)
         assert rads[0] == pytest.approx(math.radians(90))
 
     def test_even_servo_angles_negated(self, ctrl):
         positions = [90] * 8
         cmd.apply_pose(ctrl, positions, [3] * 8)
         _, rads = ctrl.sync_write_goal_position.call_args[0]
-        # index 1 → servo 2 (even) → -rad(90)
+        # index 1 → servo 6 (even) → -rad(90)
         assert rads[1] == pytest.approx(math.radians(-90))
 
     def test_speeds_applied_per_servo(self, ctrl):
@@ -228,10 +228,10 @@ class TestApplyPose:
         cmd.apply_pose(ctrl, [0] * 8, speeds)
         speed_calls = [c.args for c in ctrl.write_goal_speed.call_args_list]
         # Speeds are sent in SERVO_PAIRS order: (s1, spd1), (s2, spd2), ...
-        # SERVO_PAIRS: (1,2),(3,4),(5,6),(7,8)
-        # speeds[0]→servo1, speeds[1]→servo2, speeds[2]→servo3, ...
+        # SERVO_PAIRS: (5,6),(3,4),(1,2),(7,8)
+        # speeds[0]→servo5, speeds[1]→servo6, speeds[2]→servo3, ...
         servo_to_speed = {servo_id: spd for servo_id, spd in speed_calls}
-        assert servo_to_speed[1] == 1
-        assert servo_to_speed[2] == 2
+        assert servo_to_speed[5] == 1
+        assert servo_to_speed[6] == 2
         assert servo_to_speed[3] == 3
         assert servo_to_speed[4] == 4

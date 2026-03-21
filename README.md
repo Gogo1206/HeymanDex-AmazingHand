@@ -6,7 +6,7 @@ This project is designed for the [AmazingHand](https://github.com/pollen-robotic
 
 ### Requirements
 
-- Python 3.9 or newer (Tkinter must be included for the GUI)
+- Python 3.10 or newer (Tkinter must be included for the GUI)
 - External 5 V power supply for the eight servos
 - USB serial bus adapter and driver installed on your computer
 - Python packages listed in `requirements.txt`
