@@ -96,7 +96,6 @@ import os
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
-from tkinter import font as tkfont
 from textwrap import dedent
 import numpy as np
 from rustypot import Scs0009PyController
@@ -1446,9 +1445,6 @@ class AmazingHandGUI:
         self.monitoring = True
         self.monitor_thread = threading.Thread(target=self.monitor_servos, daemon=True)
         self.monitor_thread.start()
-        
-        # Auto-connect on startup
-        self.root.after(100, self.connect_controller)
         
         # Auto-connect on startup
         self.root.after(100, self.connect_controller)
@@ -3597,23 +3593,6 @@ class AmazingHandGUI:
         
         self.sequence_thread = threading.Thread(target=run_sequence, daemon=True)
         self.sequence_thread.start()
-    
-    def _apply_pose(self, pose, name):
-        """Apply a pose to the GUI (called from main thread)."""
-        pose_positions = pose.get('positions', [0]*8)
-        for idx, finger in enumerate(self.fingers):
-            pos1 = pose_positions[idx * 2]
-            pos2 = pose_positions[idx * 2 + 1]
-            finger.set_positions(pos1, pos2)
-            finger.speed_var.set(pose['speed'])
-        
-        # Trigger position update
-        self.update_pending = True
-        self.send_positions()
-        self.status_var.set(f"Executing: {name}")
-        pose_id = self._log_pose_start(name, pose_positions)
-        # Wait for servos to reach target (using pose speed)
-        self.root.after(2000, lambda pid=pose_id, tgt=tuple(pose_positions): self._log_pose_completion(name, tgt, pose_id=pid))
     
     def _apply_pose_from_config(self, pose_data, name, speeds=None):
         """Apply a pose from YAML config format."""

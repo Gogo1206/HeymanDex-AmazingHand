@@ -48,8 +48,6 @@ Features:
 - Delete saved poses directly from the GUI (🗑 Delete button)
 - Live servo telemetry charts (position, load, temperature, voltage)
 
-See `PERFORMANCE_OPTIMIZATIONS.md` for a breakdown of the latest rendering and responsiveness improvements.
-
 #### Keyboard Controls
 
 - **1-4**: Select finger (Ring, Middle, Pointer, Thumb)
@@ -117,47 +115,9 @@ sequences:
       - "open:2,2,2,2,2,2,2,2|0.8s"
 ```
 
-Loop behavior is handled at runtime (GUI checkbox or `--loop` flag in the CLI) and is no longer stored in YAML.
+Loop behavior is handled at runtime (GUI checkbox) and is no longer stored in YAML.
 
 The GUI automatically creates `data/hand_config.yaml` if it doesn't exist.
-
----
-
-### Running the CLI (`amazing_hand_cmd.py`)
-
-Basic examples:
-
-```bash
-# Set servo 1 to 45 degrees at speed 6
-python amazing_hand_cmd.py --id 1 --position 45 --speed 6
-
-# Set multiple servos synchronously
-python amazing_hand_cmd.py --id 1 2 3 4 --position 10 20 30 40
-
-# Set all 8 servos to 0 degrees and enable torque
-python amazing_hand_cmd.py --all --position 0 --enable
-
-# Read current positions
-python amazing_hand_cmd.py --all --read
-
-# Print all positions on one line (useful for scripts)
-python amazing_hand_cmd.py --print
-```
-
-#### Interactive Mode
-
-Start an interactive shell to control individual servos:
-
-```bash
-python amazing_hand_cmd.py --interactive
-```
-
-Available interactive commands:
-
-- `set <servo_id> <position_deg> [speed]` - Set servo position
-- `read <servo_id>` - Read current position
-- `enable <servo_id> [1|0]` - Enable/disable torque
-- `quit` / `exit` / `q` - Exit interactive mode
 
 ---
 

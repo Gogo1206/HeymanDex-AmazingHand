@@ -216,29 +216,21 @@ Located below the finger panel, the log records operations in chronological orde
 
 ---
 
-## 7. Command-Line Companion (`amazing_hand_cmd.py`)
+## 7. Appendix
 
-For scripted operations, refer to the CLI section in `README.md`. The GUI and CLI share the same configuration file (`data/hand_config.yaml`).
-
----
-
-## 8. Appendix
-
-### 8.1 File Structure
+### 7.1 File Structure
 
 ```
 AmazingHandGUI/
 ├── amazing_hand_gui.py          # GUI application
-├── amazing_hand_cmd.py          # CLI tool
 ├── data/hand_config.yaml        # Poses & sequences
 ├── docs/user_manual.md          # This document
 ├── docs/screenshots/            # PNG captures embedded in this manual
 ├── docs/scs_servo_protocol.md   # SCS servo protocol reference
-├── PERFORMANCE_OPTIMIZATIONS.md # Rendering improvements
 └── README.md                    # Quick reference
 ```
 
-### 8.2 Useful Links
+### 7.2 Useful Links
 
 - [AmazingHand (official project)](https://github.com/pollen-robotics/AmazingHand)
 - [Feetech Servo Debug Tool](https://github.com/Robot-Maker-SAS/FeetechServo/tree/main/feetech%20debug%20tool%20master/FD1.9.8.2)
@@ -246,7 +238,7 @@ AmazingHandGUI/
 
 ---
 
-## 9. Revision History
+## 8. Revision History
 
 | Date | Author | Notes |
 |------|--------|-------|
