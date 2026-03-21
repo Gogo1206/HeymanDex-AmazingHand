@@ -230,6 +230,70 @@ class TestHardwarePoseApply:
 
 
 # ===================================================================
+# Individual finger open / close / wave
+# ===================================================================
+
+def _move_finger(ctrl, finger_idx, pos, side=0, speed=5):
+    """Move a single finger to (pos, side) while leaving others unchanged."""
+    s1, s2 = SERVO_PAIRS[finger_idx]
+    ctrl.write_goal_speed(s1, speed)
+    ctrl.write_goal_speed(s2, speed)
+    ctrl.sync_write_goal_position(
+        [s1, s2],
+        [angle_rad(s1, pos), angle_rad(s2, side)],
+    )
+
+
+@pytest.mark.hardware
+class TestHardwareIndividualFingers:
+    """Open, close, and wave each finger individually."""
+
+    @pytest.mark.parametrize("finger_idx, name", list(enumerate(FINGER_NAMES)))
+    def test_open_single_finger(self, controller, finger_idx, name):
+        """Each finger can move to the open (0°) position."""
+        _move_finger(controller, finger_idx, 0, speed=6)
+        time.sleep(1.5)
+        s1, s2 = SERVO_PAIRS[finger_idx]
+        deg = _read_position_deg(controller, s1)
+        assert deg < 15.0, f"{name} servo {s1} at {deg}° instead of ~0°"
+
+    @pytest.mark.parametrize("finger_idx, name", list(enumerate(FINGER_NAMES)))
+    def test_close_single_finger(self, controller, finger_idx, name):
+        """Each finger can move to the closed (110°) position."""
+        _move_finger(controller, finger_idx, 110, speed=6)
+        time.sleep(1.5)
+        s1, s2 = SERVO_PAIRS[finger_idx]
+        deg = _read_position_deg(controller, s1)
+        assert deg > 90.0, f"{name} servo {s1} at {deg}° instead of ~110°"
+        # Return to open
+        _move_finger(controller, finger_idx, 0, speed=6)
+        time.sleep(1.0)
+
+    @pytest.mark.parametrize("finger_idx, name", list(enumerate(FINGER_NAMES)))
+    def test_wave_single_finger(self, controller, finger_idx, name):
+        """Each finger can wave: open → close → open cycle."""
+        s1, _ = SERVO_PAIRS[finger_idx]
+
+        # Open
+        _move_finger(controller, finger_idx, 0, speed=6)
+        time.sleep(1.5)
+        deg_open = _read_position_deg(controller, s1)
+        assert deg_open < 15.0, f"{name} open: {deg_open}°"
+
+        # Close
+        _move_finger(controller, finger_idx, 110, speed=5)
+        time.sleep(2.0)
+        deg_close = _read_position_deg(controller, s1)
+        assert deg_close > 90.0, f"{name} close: {deg_close}°"
+
+        # Back to open
+        _move_finger(controller, finger_idx, 0, speed=5)
+        time.sleep(2.0)
+        deg_back = _read_position_deg(controller, s1)
+        assert deg_back < 15.0, f"{name} back to open: {deg_back}°"
+
+
+# ===================================================================
 # FR-FING-4: Speed Control  (AC 4.1, 4.2)
 # ===================================================================
 
