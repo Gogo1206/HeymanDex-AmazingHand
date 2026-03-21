@@ -2339,10 +2339,31 @@ class AmazingHandGUI:
         """Handle window close event."""
         print("Shutting down...")
         self.monitoring = False
+        self.stop_sequence = True
+
+        # Disconnect hardware (disable torque)
+        try:
+            self.disconnect_controller()
+        except Exception:
+            pass
+
+        # Stop monitor thread
         if hasattr(self, 'monitor_thread'):
             self.monitor_thread.join(timeout=1)
-        self.root.destroy()
-        sys.exit(0)
+
+        # Close matplotlib figures to release backend resources
+        try:
+            import matplotlib.pyplot as plt
+            plt.close('all')
+        except Exception:
+            pass
+
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
+
+        os._exit(0)
     
     def on_finger_update(self, mimic_source=None):
         """Called when any finger control changes."""
