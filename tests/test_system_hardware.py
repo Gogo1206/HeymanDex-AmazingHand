@@ -296,7 +296,9 @@ class TestHardwareTelemetry:
         for sid in range(1, 9):
             voltage = controller.read_present_voltage(sid)
             v = coerce_numeric(voltage, 0.0)
-            # Voltage should be between 4V and 8.5V for typical servo bus
+            # Raw register value in 0.1V units (e.g. 54 = 5.4V)
+            if v > 20.0:
+                v = v / 10.0
             assert 4.0 <= v <= 8.5, f"Servo {sid} voltage: {v}V"
 
     def test_read_speed(self, controller):
