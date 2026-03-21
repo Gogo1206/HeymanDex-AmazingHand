@@ -199,7 +199,7 @@ Invalid names will be rejected with error message showing forbidden characters.
 
 ## License
 
-Copyright 2025 AmazingHand Control Contributors
+Copyright 2026 AmazingHand Control Contributors
 
 Licensed under the Apache License, Version 2.0
 

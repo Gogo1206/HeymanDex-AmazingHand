@@ -9,12 +9,8 @@ poses:
     positions: [80, 80, 0, 0, 0, 0, 110, 30]
   stinke:
     positions: [110, 110, 0, 0, 110, 110, 110, 110]
-  open_joined:
-    positions: [-25, 25, 0, 0, 25, -25, 25, -25]
   close_joined:
     positions: [70, 110, 110, 110, 110, 50, 110, 30]
-  open_spreaded:
-    positions: [40, -40, 0, 0, -40, 40, 0, 0]
   greeting:
     positions: [0, 0, 0, 0, 0, 0, 150, 70]
   c:
@@ -25,6 +21,8 @@ poses:
     positions: [0, 0, 55, 55, 90, 110, 0, 0]
   testwwss:
     positions: [78, 48, 32, 32, 28, 67, 71, 35]
+  bla:
+    positions: [0, 0, 0, 0, 0, 0, 0, 0]
 sequences:
   demo:
     steps:

@@ -1,6 +1,6 @@
 # AmazingHand Controller – User Manual
 
-> **Version:** 2025-11-25  
+> **Version:** 2026-03-21  
 > **Applies to:** `amazing_hand_gui.py` (Desktop GUI)
 
 ---
@@ -38,13 +38,13 @@ The AmazingHand Controller GUI provides real-time monitoring and manual control 
 |                              AmazingHand Controller                            |
 +---------------------------+-----------------------------------------------+----+
 | Finger Controls           | Chart Controls & Telemetry Plot                    |
-| (Pointer–Thumb)           | (Display menu, chart canvas)                       |
+| (Ring – Middle – Pointer) | (Display menu, chart canvas)                       |
 +---------------------------+-----------------------------------------------+----+
-| Control Stack             | Feedback Table (Servo Metrics)                     |
-| (Connection, Global, Pose,| (Goal, Position, Load, Speed, etc.)                |
-|  Sequence)                |                                                    |
+| Control Stack             | Thumb finger   | Feedback Table (Servo Metrics)    |
+| (Connection, Global, Pose,| control        | (Goal, Position, Load, etc.)      |
+|  Sequence)                |                |                                   |
 +---------------------------+                                                    |
-| Execution Log & Status    |                                                     |
+| Execution Log & Status    |                                                    |
 +--------------------------------------------------------------------------------+
 ```
 
@@ -54,7 +54,7 @@ The AmazingHand Controller GUI provides real-time monitoring and manual control 
 
 | Panel | Location | Purpose |
 |-------|----------|---------|
-| **Finger Controls** | Left, top | Individual sliders and speed selectors for each finger pair. Includes mimic indicators and per-finger status LEDs. |
+| **Finger Controls** | Left, top (3 fingers) + bottom-right (Thumb) | Individual sliders and speed selectors for each finger pair. Includes mimic indicators and per-finger status LEDs. |
 | **Right Control Stack** | Left, bottom-right | Connection settings, global controls, pose management, and sequence player. |
 | **Telemetry Panel** | Right | Real-time charts with zoom/pan sliders and a configurable feedback table. |
 | **Execution Log** | Bottom | Stream of status messages, warnings, and sequence progress. |
@@ -70,7 +70,7 @@ Each finger widget controls a pair of servos (position + side offset):
 - **Mode toggle:** switch between **Auto** (base + offset sliders) and **Raw** (direct servo targets).
 - **Status LED:** gray (idle), green (moving), red (blocked potential, based on load vs goal).
 - **Position slider:** 0–110° (open to closed). Mouse wheel adjusts by 1°; dragging snaps quickly.
-- **Side slider:** ±20° for lateral adjustments.
+- **Side slider:** ±40° for lateral adjustments. The Thumb side slider is **inverted** so that the physical direction matches the hand's anatomical orientation — dragging right moves the thumb in the positive direction relative to its hardware mounting.
 - **Speed selector:** dropdown 1–6 controlling movement velocity for both servos in the finger pair.
 - **Mimic checkbox:** mirrors close/open motions from a source finger for coordinated movement while in Auto mode.
 
@@ -91,11 +91,13 @@ Keyboard shortcuts supplement the sliders (documented in §5.2).
 
 ### 4.2 Global Control Stack (Right of Finger Panel)
 
-1. **Connection:** port selection, baudrate, connect/disconnect buttons. Status bar at the bottom reports success or errors.
+1. **Connection:** port and baudrate selection (both dropdowns are disabled while connected), connect/disconnect buttons. Status bar at the bottom reports success or errors.
 2. **Global Controls:**
    - **Open All / Close All / Center All** – apply to every finger instantly.
    - **Global Speed dropdown** – sets the per-finger speed selectors to a common value (1–6).
-3. **Pose Management:** save, load, and apply stored poses from `data/hand_config.yaml`.
+3. **Pose Management:** save, load, apply, and delete stored poses from `data/hand_config.yaml`.
+   - Layout: `Pose: [dropdown]  ✓ Apply  🗑 Delete  Name: [entry]  ➕ Add New`
+   - **🗑 Delete** removes the selected pose permanently (confirmation dialog shown).
 4. **Sequence Player:** select and execute multi-step animations, with optional looping. Access the sequence manager dialog via **🔧 Manage**.
 
 ![Connection, global controls, pose management, and sequence player stack](./screenshots/control_frame.png)
@@ -148,7 +150,7 @@ Located below the finger panel, the log records operations in chronological orde
 
 ### 5.2 Manual Control and Shortcuts
 
-- Select a finger with keys **1–4**.
+- Select a finger with keys **1–4** (1 = Ring, 2 = Middle, 3 = Pointer, 4 = Thumb).
 - **Arrow keys:** Up/Down adjust the position; Left/Right adjust lateral offset.
 - Holding **Shift** multiplies step size by 5; **Ctrl** multiplies by 10.
 - **Q / E:** fully close / open the selected finger.
@@ -167,11 +169,12 @@ Located below the finger panel, the log records operations in chronological orde
 - The **Global Speed** selector synchronizes all finger speeds.
 - Observe speed changes in the feedback table (`Speed` row) during motion.
 
-### 5.4 Applying Poses
+### 5.4 Applying and Deleting Poses
 
 1. Arrange finger positions using sliders or keyboard shortcuts.
 2. In **Pose Management**, type a unique name and click **➕ Add New**.
 3. To apply, select the pose from the dropdown and click **✓ Apply**.
+4. To delete, select the pose from the dropdown and click **🗑 Delete**. A confirmation dialog prevents accidental removal.
 
 > Poses store servo positions only; speeds are determined at runtime by the GUI settings.
 
@@ -224,12 +227,13 @@ For scripted operations, refer to the CLI section in `README.md`. The GUI and CL
 ### 8.1 File Structure
 
 ```
-AmazingHandControlV2/
+AmazingHandGUI/
 ├── amazing_hand_gui.py          # GUI application
 ├── amazing_hand_cmd.py          # CLI tool
 ├── data/hand_config.yaml        # Poses & sequences
 ├── docs/user_manual.md          # This document
-├── screenshots/                 # PNG captures embedded in this manual
+├── docs/screenshots/            # PNG captures embedded in this manual
+├── docs/scs_servo_protocol.md   # SCS servo protocol reference
 ├── PERFORMANCE_OPTIMIZATIONS.md # Rendering improvements
 └── README.md                    # Quick reference
 ```
@@ -246,5 +250,6 @@ AmazingHandControlV2/
 
 | Date | Author | Notes |
 |------|--------|-------|
+| 2026-03-21 | Ingo | Panel layout update: Ring/Pointer swap, Thumb moved right, control stack moved left. Thumb side slider inverted. Delete pose button added between Apply and Name. Port and Baudrate dropdowns now locked while connected. Keyboard shortcut 1–4 now maps Ring/Middle/Pointer/Thumb. |
 | 2025-11-25 | Ingo | Added expanded screenshot gallery, chart mode explanations, and refreshed panel walkthroughs. |
 | 2025-11-25 | Ingo | Initial manual covering UI panels, workflows, and telemetry usage. |

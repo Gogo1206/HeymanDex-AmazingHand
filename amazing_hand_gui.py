@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2025 Ingo Dering
+# Copyright 2026 Ingo Dering
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -122,7 +122,7 @@ KEYBOARD_HELP_TEXT = dedent(
         ═════════════════════════════════════════════════════
 
         FINGER SELECTION:
-            1, 2, 3, 4    Select finger (Pointer, Middle, Ring, Thumb)
+            1, 2, 3, 4    Select finger (Ring, Middle, Pointer, Thumb)
 
         MOVEMENT CONTROLS:
             Up Arrow      Close finger (increase position)
@@ -519,12 +519,13 @@ class FingerControl:
     Note: Even servo IDs have inverted angles in hardware.
     """
     
-    def __init__(self, parent, finger_name, servo1_id, servo2_id, controller, update_callback):
+    def __init__(self, parent, finger_name, servo1_id, servo2_id, controller, update_callback, invert_side=False):
         self.servo1_id = servo1_id
         self.servo2_id = servo2_id
         self.controller = controller
         self.update_callback = update_callback
         self._suppress_events = False
+        self.invert_side = invert_side
         self.mode_var = tk.StringVar(value='auto')
         self._led_mode = 'idle'
         self._led_blink_job = None
@@ -618,8 +619,10 @@ class FingerControl:
         self.side_var = tk.IntVar(value=0)
         side_min = self.app_config['limits']['side_min']
         side_max = self.app_config['limits']['side_max']
+        side_from = side_min if self.invert_side else side_max
+        side_to   = side_max if self.invert_side else side_min
         self.side_slider = ttk.Scale(
-            right_col, from_=side_max, to=side_min, orient='horizontal',
+            right_col, from_=side_from, to=side_to, orient='horizontal',
             variable=self.side_var, command=self.on_side_change,
             length=200
         )
@@ -1181,11 +1184,11 @@ class AmazingHandGUI:
         # Create finger controls
         self.fingers = []
         app_config = load_app_config()
-        self.finger_names = ['Pointer finger', 'Middle finger', 'Ring finger', 'Thumb']
+        self.finger_names = ['Ring finger', 'Middle finger', 'Pointer finger', 'Thumb']
         servo_pairs = [
-            app_config['servos']['pointer'],
-            app_config['servos']['middle'],
             app_config['servos']['ring'],
+            app_config['servos']['middle'],
+            app_config['servos']['pointer'],
             app_config['servos']['thumb']
         ]
         
@@ -1196,23 +1199,24 @@ class AmazingHandGUI:
                 parent = left_frame
             else:  # Second row: finger 4 (thumb)
                 row = 2
-                col = 0
+                col = 4
                 parent = left_frame
             
             finger = FingerControl(
-                parent, name, s1, s2, self.controller, self.on_finger_update
+                parent, name, s1, s2, self.controller, self.on_finger_update,
+                invert_side=(idx == 3)
             )
             finger.frame.grid(row=row, column=col, columnspan=2, padx=3, pady=2, sticky='nsew')
             self.fingers.append(finger)
 
         # Right-side stacked controls next to thumb (span remaining columns)
-        # Layout: Stacked vertically in Grid Row 2, Columns 2-5
+        # Layout: Stacked vertically in Grid Row 2, Columns 0-3
         # 1. Connection
         # 2. Global Controls
         # 3. Pose Management
         # 4. Sequence Player
         right_controls_frame = ttk.Frame(left_frame)
-        right_controls_frame.grid(row=2, column=2, columnspan=4, padx=(6, 0), pady=2, sticky='nsew')
+        right_controls_frame.grid(row=2, column=0, columnspan=4, padx=(0, 6), pady=2, sticky='nsew')
         
         # Connection options - top of right stack
         conn_frame = ttk.LabelFrame(right_controls_frame, text="Connection", padding=3)
@@ -1245,12 +1249,12 @@ class AmazingHandGUI:
         self.baudrate_var = tk.StringVar(value=str(self.initial_baudrate))
         app_config = load_app_config()
         baudrate_options = [str(b) for b in app_config['serial']['baudrate_options']]
-        baudrate_combo = ttk.Combobox(
+        self.baudrate_combo = ttk.Combobox(
             conn_row, textvariable=self.baudrate_var, 
             values=baudrate_options, width=8, state='readonly'
         )
-        baudrate_combo.pack(side='left', padx=2)
-        attach_tooltip(baudrate_combo, "Serial communication speed.")
+        self.baudrate_combo.pack(side='left', padx=2)
+        attach_tooltip(self.baudrate_combo, "Serial communication speed.")
         
         self.connect_btn = ttk.Button(
             conn_row, text="▶ Connect", command=self.connect_controller, width=10
@@ -1313,7 +1317,7 @@ class AmazingHandGUI:
         self.pose_var = tk.StringVar(value=default_pose)
         pose_row = ttk.Frame(pose_mgmt_frame)
         pose_row.pack(fill='x', expand=True, pady=2)
-        pose_row.columnconfigure(3, weight=1)
+        pose_row.columnconfigure(4, weight=1)
 
         ttk.Label(pose_row, text="Pose:").grid(row=0, column=0, padx=(0,2))
         self.pose_combo = ttk.Combobox(
@@ -1332,18 +1336,24 @@ class AmazingHandGUI:
         self.set_pose_btn.grid(row=0, column=2, padx=5)
         attach_tooltip(self.set_pose_btn, "Apply the selected pose to all fingers.")
 
-        ttk.Label(pose_row, text="Name:").grid(row=0, column=3, padx=(10,2), sticky='e')
+        self.delete_pose_btn = ttk.Button(
+            pose_row, text="🗑 Delete", command=self.delete_pose, width=10
+        )
+        self.delete_pose_btn.grid(row=0, column=3, padx=(0, 5))
+        attach_tooltip(self.delete_pose_btn, "Permanently delete the currently selected pose.")
+
+        ttk.Label(pose_row, text="Name:").grid(row=0, column=4, padx=(10,2), sticky='e')
         self.save_pose_name_var = tk.StringVar()
         self.save_pose_entry = ttk.Entry(pose_row, textvariable=self.save_pose_name_var, width=14)
-        self.save_pose_entry.grid(row=0, column=4, padx=2)
+        self.save_pose_entry.grid(row=0, column=5, padx=2)
         attach_tooltip(self.save_pose_entry, "Enter a name for the pose. Avoid special chars: : { } [ ] , & * # ? | - < > = ! % @ ` \" '")
 
         self.save_pose_btn = ttk.Button(
             pose_row, text="➕ Add New", command=self.save_pose, width=10
         )
-        self.save_pose_btn.grid(row=0, column=5, padx=5)
+        self.save_pose_btn.grid(row=0, column=6, padx=5)
         attach_tooltip(self.save_pose_btn, "Save current finger positions as a new pose.")
-       
+
         # Sequence player section - bottom of right stack
         seq_player_frame = ttk.LabelFrame(right_controls_frame, text="Sequence Player", padding=3)
         seq_player_frame.pack(fill='x', expand=True, pady=2)
@@ -2231,6 +2241,7 @@ class AmazingHandGUI:
             self.connect_btn.state(['disabled'])
             self.disconnect_btn.state(['!disabled'])
             self.port_combo.config(state='disabled')
+            self.baudrate_combo.config(state='disabled')
             
             self.log("Connected successfully!")
             self.status_var.set(f"Connected to {port}")
@@ -2260,6 +2271,7 @@ class AmazingHandGUI:
             self.connect_btn.state(['!disabled'])
             self.disconnect_btn.state(['disabled'])
             self.port_combo.config(state='readonly')
+            self.baudrate_combo.config(state='readonly')
             
             self.log("Disconnected")
             self.status_var.set("Disconnected")
@@ -2634,6 +2646,8 @@ class AmazingHandGUI:
 
             self.canvas.draw_idle()
         
+        except KeyboardInterrupt:
+            self.on_closing()
         except Exception as e:
             print(f"Chart update error: {e}")
             import traceback
@@ -3006,6 +3020,45 @@ class AmazingHandGUI:
         
         except Exception as e:
             self.status_var.set(f"Error saving: {e}")
+
+    def delete_pose(self):
+        """Delete the currently selected pose from the config."""
+        name = self.pose_var.get().strip()
+        if not name or name == '<no poses>':
+            self.status_var.set("No pose selected to delete")
+            return
+
+        if not messagebox.askyesno(
+            "Delete Pose",
+            f"Permanently delete pose '{name}'?",
+            parent=self.root
+        ):
+            return
+
+        try:
+            config = load_config()
+            if name not in config.get('poses', {}):
+                self.status_var.set(f"Pose '{name}' not found")
+                return
+
+            del config['poses'][name]
+
+            if save_config(config):
+                current_values = [v for v in self.pose_combo['values'] if v != name]
+                if current_values:
+                    self.pose_combo['values'] = current_values
+                    self.pose_var.set(current_values[0])
+                else:
+                    self.pose_combo['values'] = ['<no poses>']
+                    self.pose_var.set('<no poses>')
+
+                self.status_var.set(f"Deleted pose '{name}'")
+                self.log(f"Deleted pose: {name}")
+            else:
+                self.status_var.set("Error saving config after delete")
+
+        except Exception as e:
+            self.status_var.set(f"Error deleting pose: {e}")
 
     def set_selected_pose(self):
         """Apply the currently selected pose from the dropdown to the hand."""
@@ -3810,7 +3863,10 @@ def main():
     args = parser.parse_args()
     
     app = AmazingHandGUI(args.port, args.baudrate)
-    app.run()
+    try:
+        app.run()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == '__main__':

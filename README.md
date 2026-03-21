@@ -45,13 +45,14 @@ Features:
 - Per-finger speed selection (1-6) with a global speed sync dropdown
 - Keyboard shortcuts for quick precise movements
 - Pose and sequence management using `data/hand_config.yaml`
+- Delete saved poses directly from the GUI (🗑 Delete button)
 - Live servo telemetry charts (position, load, temperature, voltage)
 
 See `PERFORMANCE_OPTIMIZATIONS.md` for a breakdown of the latest rendering and responsiveness improvements.
 
 #### Keyboard Controls
 
-- **1-4**: Select finger (Pointer, Middle, Ring, Thumb)
+- **1-4**: Select finger (Ring, Middle, Pointer, Thumb)
 - **Arrow Keys**: Move selected finger
   - Up/Down: Close/Open
   - Left/Right: Move laterally
@@ -79,8 +80,9 @@ All poses and sequences are stored in `data/hand_config.yaml`:
 3. Click "➕ Add New" in the Pose Management section
   - Speeds only affect how the sliders move; saved poses store the 8 servo positions only
 
-**Loading Poses:**
-- Select from dropdown and click "Set Pose"
+**Loading / Deleting Poses:**
+- Select from dropdown and click **✓ Apply** to move the hand to that pose
+- Click **🗑 Delete** (right of Apply) to permanently remove the selected pose after confirmation
 
 **Sequence Management:**
 1. Click "🔧 Manage" in the Sequence Player to open the sequence manager
