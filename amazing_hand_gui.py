@@ -3179,7 +3179,6 @@ class AmazingHandGUI:
                 items = seq_data.get('steps', [])
                 loop_enabled = False  # Always non-looping in dialog quick-execute
                 
-                dialog.destroy()
                 self._execute_sequence_items(items, loop_enabled, poses)
             
             def delete_selected_sequence():
@@ -3471,7 +3470,6 @@ class AmazingHandGUI:
                 steps = [builder_listbox.get(i) for i in range(builder_listbox.size())]
                 loop_enabled = False  # Test execution is non-looping
                 
-                dialog.destroy()
                 self._execute_sequence_items(steps, loop_enabled, poses)
             
             save_btn = ttk.Button(save_frame, text="💾 Save Sequence", command=save_sequence, width=15)
