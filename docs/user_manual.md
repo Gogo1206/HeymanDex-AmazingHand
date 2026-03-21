@@ -266,6 +266,7 @@ AmazingHandGUI/
 ├── amazing_hand_gui.py          # GUI application
 ├── amazing_hand_cmd.py          # CLI tool
 ├── data/hand_config.yaml        # Poses & sequences
+├── data/config.yaml             # Application settings
 ├── docs/user_manual.md          # This document
 ├── docs/screenshots/            # PNG captures embedded in this manual
 ├── docs/scs_servo_protocol.md   # SCS servo protocol reference

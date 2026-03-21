@@ -114,7 +114,7 @@ import yaml
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 CONFIG_FILE = DATA_DIR / "hand_config.yaml"  # YAML with poses and sequences
-APP_CONFIG_FILE = BASE_DIR / "config.yaml"  # Application settings
+APP_CONFIG_FILE = DATA_DIR / "config.yaml"  # Application settings
 KEYBOARD_HELP_TEXT = dedent(
         """
         KEYBOARD CONTROLS
