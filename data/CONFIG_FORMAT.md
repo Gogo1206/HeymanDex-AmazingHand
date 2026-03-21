@@ -1,12 +1,81 @@
 # Hand Configuration Format (YAML)
 
-This document describes the YAML configuration format for AmazingHand poses and sequences.
+This document describes the YAML configuration files used by AmazingHand.
 
-## File Location
+| File | Purpose |
+|------|---------|
+| `data/hand_config.yaml` | Poses and sequences (created/edited by GUI and CLI) |
+| `data/config.yaml` | Application settings (serial port, servo limits, speeds, paths) |
 
-`data/hand_config.yaml` - All poses and sequences are stored in this file.
+---
 
-## YAML Structure
+## `data/config.yaml` – Application Settings
+
+Loaded at startup by the GUI. If the file is missing, built-in defaults are used.
+The CLI uses the same defaults (overridable via `--port` / `--baudrate`).
+
+### Full structure
+
+```yaml
+# Serial port settings
+serial:
+  port_windows: COM9          # Default port on Windows
+  port_linux: /dev/ttyACM0   # Default port on Linux/macOS
+  baudrate: 1000000           # Default baud rate
+  baudrate_options: [9600, 115200, 1000000]  # Shown in GUI dropdown
+
+# Servo assignments — [servo1_id, servo2_id] per finger
+# servo1 (odd ID)  = position axis (open/close)
+# servo2 (even ID) = side axis (left/right)
+servos:
+  ring:    [1, 2]
+  middle:  [3, 4]
+  pointer: [5, 6]
+  thumb:   [7, 8]
+  all_ids: [1, 2, 3, 4, 5, 6, 7, 8]
+
+# Servo angle limits (degrees)
+limits:
+  servo_min: -40   # Absolute minimum for any servo command
+  servo_max: 110   # Absolute maximum for any servo command
+  base_min: 0      # Open/close slider minimum
+  base_max: 110    # Open/close slider maximum
+  side_min: -40    # Left/right slider minimum
+  side_max: 40     # Left/right slider maximum
+
+# Movement speeds (1–6 scale, where 6 is fastest)
+speeds:
+  default: 3
+  min: 1
+  max: 6
+
+# Auto-mode blending extremes — [servo1_deg, servo2_deg]
+# Used to interpolate combined position+side values in Auto mode
+auto_extremes:
+  left_open:    [32, -40]
+  right_open:   [-40, 32]
+  left_closed:  [110, 110]
+  right_closed: [110, 110]
+  center_open:  [0, 0]
+  center_closed: [110, 110]
+
+# File paths (relative to project root)
+paths:
+  poses_sequences_file: data/hand_config.yaml
+```
+
+### Notes
+- All keys are optional — missing keys fall back to the built-in defaults shown above.
+- Do **not** store poses or sequences here; those belong in `data/hand_config.yaml`.
+- Restart the GUI after editing this file for changes to take effect.
+
+---
+
+## `data/hand_config.yaml` – Poses & Sequences
+
+Created and edited by the GUI and CLI. Shared between both tools.
+
+### YAML Structure
 
 ```yaml
 poses:
@@ -150,24 +219,29 @@ sequences:
 
 ### Via CLI (`amazing_hand_cmd.py`)
 
+**List all poses and sequences:**
+```bash
+python amazing_hand_cmd.py --list
+```
+
 **Execute a pose:**
 ```bash
-python3 amazing_hand_cmd.py --config data/hand_config.yaml --pose open --enable
+python amazing_hand_cmd.py --pose open
 ```
 
 **Execute a sequence:**
 ```bash
-python3 amazing_hand_cmd.py --sequence demo --enable
+python amazing_hand_cmd.py --sequence demo
 ```
 
 **Execute with loop:**
 ```bash
-python3 amazing_hand_cmd.py --sequence wave --loop --enable
+python amazing_hand_cmd.py --sequence wave --loop
 ```
 
-**Add current position as new pose:**
+**Use an alternative config:**
 ```bash
-python3 amazing_hand_cmd.py --add-pose mypose
+python amazing_hand_cmd.py --pose open --config /path/to/hand_config.yaml
 ```
 
 ## Manual Editing
