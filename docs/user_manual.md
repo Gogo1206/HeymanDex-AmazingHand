@@ -268,6 +268,7 @@ AmazingHandGUI/
 ├── data/hand_config.yaml        # Poses & sequences
 ├── data/config.yaml             # Application settings
 ├── docs/user_manual.md          # This document
+├── docs/CONFIG_FORMAT.md        # YAML config file reference
 ├── docs/screenshots/            # PNG captures embedded in this manual
 ├── docs/scs_servo_protocol.md   # SCS servo protocol reference
 └── README.md                    # Quick reference
