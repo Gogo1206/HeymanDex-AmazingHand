@@ -565,7 +565,7 @@ Failed connections do not crash the application.
 
 | AC | Criterion |
 |----|-----------|
-| 1.1 | Title includes version: "AmazingHand Controller v0.7". |
+| 1.1 | Title includes version: "AmazingHand Controller v0.8". |
 | 1.2 | Initial geometry: 1920×1200. |
 | 1.3 | Horizontal `PanedWindow` separates left (controls) and right (chart) panels. |
 
