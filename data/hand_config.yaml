@@ -3,9 +3,19 @@ poses:
     positions: [0, 0, 0, 0, 0, 0, 0, 0]
   close:
     positions: [110, 110, 110, 110, 110, 110, 110, 110]
+  ok:
+    positions: [0, 0, 0, 0, 71, 81, 82, 60]
+  greeting:
+    positions: [17, -22, 3, 3, -35, 28, 110, 110]
+  victory:
+    positions: [110, 110, -33, 26, 15, -19, 110, 110]
+  two:
+    positions: [110, 110, 2, -3, 0, 0, 110, 110]
 sequences:
   demo:
     steps:
     - open:3,3,3,3,3,3,3,3|2.0s
-    - SLEEP:1.0s
     - close:6,6,6,6,6,6,6,6|2.0s
+    - ok:3,3,3,3,3,3,3,3|1.0s
+    - victory:3,3,3,3,3,3,3,3|1.0s
+    - greeting:3,3,3,3,3,3,3,3|1.0s
