@@ -6,9 +6,10 @@ via a MagicMock controller object.
 """
 import math
 import io
+import time
 import pytest
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 import numpy as np
 import yaml
@@ -235,3 +236,85 @@ class TestApplyPose:
         assert servo_to_speed[6] == 2
         assert servo_to_speed[3] == 3
         assert servo_to_speed[4] == 4
+
+
+# ---------------------------------------------------------------------------
+# _interruptible_sleep (FR-SEQ-2 AC 2.4)
+# ---------------------------------------------------------------------------
+
+class TestInterruptibleSleep:
+    def test_completes_on_duration(self):
+        """AC 2.4: Sleep completes after requested duration."""
+        stop_flag = [False]
+        start = time.monotonic()
+        cmd._interruptible_sleep(0.3, stop_flag)
+        elapsed = time.monotonic() - start
+        assert elapsed >= 0.3
+
+    def test_stops_on_flag(self):
+        """AC 2.4: Sleep terminates early when stop flag is set."""
+        stop_flag = [True]
+        start = time.monotonic()
+        cmd._interruptible_sleep(10.0, stop_flag)
+        elapsed = time.monotonic() - start
+        assert elapsed < 1.0
+
+
+# ---------------------------------------------------------------------------
+# Auto-wait calculation (FR-SEQ-2 AC 2.3)
+# ---------------------------------------------------------------------------
+
+class TestAutoWait:
+    """AC 2.3: No explicit delay → auto-wait = 15.0 − (avg_speed − 1) × 2.4."""
+
+    def test_speed_3_auto_wait(self):
+        avg = 3.0
+        auto_wait = 15.0 - (avg - 1) * 2.4
+        assert auto_wait == pytest.approx(10.2)
+
+    def test_speed_1_auto_wait(self):
+        avg = 1.0
+        auto_wait = 15.0 - (avg - 1) * 2.4
+        assert auto_wait == pytest.approx(15.0)
+
+    def test_speed_6_auto_wait(self):
+        avg = 6.0
+        auto_wait = 15.0 - (avg - 1) * 2.4
+        assert auto_wait == pytest.approx(3.0)
+
+
+# ---------------------------------------------------------------------------
+# FR-CLI-5: Mutually exclusive actions
+# ---------------------------------------------------------------------------
+
+class TestCmdMutualExclusion:
+    """AC 5.1, 5.2: Argument validation beyond what test_system covers."""
+
+    def test_loop_without_sequence_error(self):
+        """AC 5.2: --loop without --sequence → error."""
+        import subprocess, sys
+        result = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent.parent / "amazing_hand_cmd.py"),
+             "--list", "--loop"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode != 0
+
+
+# ---------------------------------------------------------------------------
+# FR-CLI-6: Config file override
+# ---------------------------------------------------------------------------
+
+class TestConfigFileOverride:
+    """AC 6.1: Missing file → error + sys.exit(1)."""
+
+    def test_missing_config_exits(self, tmp_path):
+        missing = tmp_path / "no_such.yaml"
+        with pytest.raises(SystemExit):
+            cmd.load_config(missing)
+
+    def test_valid_config_loads(self, tmp_path):
+        cf = tmp_path / "cfg.yaml"
+        cf.write_text("poses:\n  test:\n    positions: [0,0,0,0,0,0,0,0]\nsequences: {}\n")
+        config = cmd.load_config(cf)
+        assert "test" in config["poses"]

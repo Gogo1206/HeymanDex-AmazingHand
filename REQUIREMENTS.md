@@ -622,10 +622,13 @@ Failed connections do not crash the application.
 
 ## Test Coverage Summary
 
-| Test File | Scope |
-|-----------|-------|
-| `tests/test_gui_utils.py` | `validate_name` (21), `clamp` (8), `load_config` (6), `save_config` (6) |
-| `tests/test_cmd.py` | `angle_rad` (8), `parse_step` (11), `cmd_list` (4), `load_config` (2), `apply_pose` (6) |
-| `tests/test_integration.py` | `cmd_pose` e2e (5), `cmd_sequence` e2e (6), config round-trip (3) |
-| `tests/test_system.py` | CLI subprocess: `--help` (5), `--list` (6), error paths (5) |
-| **Total** | **114 tests** |
+| Test File | Scope | Count |
+|-----------|-------|-------|
+| `tests/test_hand_logic.py` | `load_app_config` (6), `servo_mapping` (3), `angle_limits` (1), `auto_extremes` (2), `speed_config` (1), `default_serial_port` (2), `ensure_data_dir` (2), `load_pose_definitions` (3), `compute_auto_positions` (6), `decompose_servo_positions` (5), `coerce_numeric` (11), `coerce_angle_degrees` (6), `coerce_bool` (6), `load_to_percent` (7), `estimate_current_from_load` (5), `format_feedback_value` (12), `get_time_window_indices` (8), `angle_rad` (3) | 89 |
+| `tests/test_gui_utils.py` | `validate_name` (21), `clamp` (8), `load_config` (6), `save_config` (6) | 41 + 10 parametrized |
+| `tests/test_cmd.py` | `angle_rad` (8), `parse_step` (11), `cmd_list` (4), `load_config` (2), `apply_pose` (6), `_interruptible_sleep` (2), `auto_wait` (3), `mutual_exclusion` (1), `config_override` (2) | 41 |
+| `tests/test_integration.py` | `cmd_pose` e2e (5), `cmd_sequence` e2e (6), config round-trip (3) | 14 |
+| `tests/test_system.py` | CLI subprocess: `--help` (5), `--list` (9), `--help` options (3), error paths (5) | 22 |
+| `tests/test_system_hardware.py` | Real hardware: connect (2), CLI connection (2), pose apply (3), speed (2), telemetry (6), sequence (2), error recovery (1), movement (2), disconnect (1) — **requires `--hardware` flag** | 21 |
+| **Total (no hardware)** | **217 tests** |
+| **Total (with hardware)** | **238 tests** |

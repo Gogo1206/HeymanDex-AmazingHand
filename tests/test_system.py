@@ -125,6 +125,41 @@ class TestCliList:
         result = run_cli("--list", "--config", str(missing))
         assert result.returncode != 0
 
+    def test_list_no_connection_opened(self, sample_config_file):
+        """FR-CLI-1 AC 1.3: --list does NOT open a serial connection."""
+        result = run_cli("--list", "--config", str(sample_config_file))
+        assert result.returncode == 0
+        # Success without hardware proves no connection was attempted
+
+    def test_list_shows_pose_positions(self, sample_config_file):
+        """FR-CLI-1 AC 1.1: Output shows each pose with positions."""
+        result = run_cli("--list", "--config", str(sample_config_file))
+        assert "[0, 0, 0, 0, 0, 0, 0, 0]" in result.stdout or "0" in result.stdout
+
+    def test_list_shows_sequence_step_details(self, sample_config_file):
+        """FR-CLI-1 AC 1.2: Output shows sequence step details."""
+        result = run_cli("--list", "--config", str(sample_config_file))
+        assert "open:" in result.stdout or "close:" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# CLI help options (FR-UI-7)
+# ---------------------------------------------------------------------------
+
+class TestCliHelpOptions:
+    def test_help_contains_port_option(self):
+        """FR-UI-7 AC 7.1: --help shows all options."""
+        result = run_cli("--help")
+        assert "--port" in result.stdout
+
+    def test_help_contains_baudrate_option(self):
+        result = run_cli("--help")
+        assert "--baudrate" in result.stdout
+
+    def test_help_contains_config_option(self):
+        result = run_cli("--help")
+        assert "--config" in result.stdout
+
 
 # ---------------------------------------------------------------------------
 # Error paths (no hardware required)

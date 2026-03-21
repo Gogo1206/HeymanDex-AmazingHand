@@ -28,6 +28,9 @@ Homepage = "https://github.com/Betatester777/AmazingHandControl"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+markers = [
+    "hardware: tests requiring real servo hardware (run with --hardware)",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
