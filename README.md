@@ -66,6 +66,15 @@ You can override this with the `--port` option, e.g. `python amazing_hand_gui.py
 
 ### Running the GUI (`amazing_hand_gui.py`)
 
+If installed with pip:
+
+```bash
+amazing-hand-gui
+amazing-hand-gui --port COM4
+```
+
+Or run directly:
+
 ```bash
 python amazing_hand_gui.py
 ```
@@ -156,6 +165,16 @@ The GUI automatically creates `data/hand_config.yaml` if it doesn't exist.
 
 A standalone command-line tool for applying poses and playing sequences without the GUI.
 It reads the same `data/hand_config.yaml` used by the GUI.
+
+If installed with pip:
+
+```bash
+amazing-hand-cmd --list
+amazing-hand-cmd --pose open
+amazing-hand-cmd --sequence demo --loop
+```
+
+Or run directly:
 
 #### List available poses and sequences
 
