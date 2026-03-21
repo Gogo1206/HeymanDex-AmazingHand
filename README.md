@@ -121,6 +121,52 @@ The GUI automatically creates `data/hand_config.yaml` if it doesn't exist.
 
 ---
 
+### Running the CLI (`amazing_hand_cmd.py`)
+
+A standalone command-line tool for applying poses and playing sequences without the GUI.
+It reads the same `data/hand_config.yaml` used by the GUI.
+
+#### List available poses and sequences
+
+```bash
+python amazing_hand_cmd.py --list
+```
+
+#### Apply a single pose
+
+```bash
+python amazing_hand_cmd.py --pose open
+python amazing_hand_cmd.py --pose close
+```
+
+#### Play a sequence once
+
+```bash
+python amazing_hand_cmd.py --sequence demo
+```
+
+#### Play a sequence in a loop (Ctrl+C to stop)
+
+```bash
+python amazing_hand_cmd.py --sequence wave --loop
+```
+
+#### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `--pose NAME` | – | Apply the named pose |
+| `--sequence NAME` | – | Play the named sequence |
+| `--list` | – | List all poses and sequences |
+| `--loop` | off | Loop sequence until Ctrl+C |
+| `--port PORT` | `/dev/ttyACM0` (Linux) / `COM9` (Win) | Serial port |
+| `--baudrate N` | `1000000` | Baud rate |
+| `--config PATH` | `data/hand_config.yaml` | Alternative config file |
+
+Torque is automatically disabled on all servos when the script exits (including Ctrl+C).
+
+---
+
 ### Servo ID Configuration
 
 Tutorial for configuring servo IDs with Feetech software and the serial bus driver:

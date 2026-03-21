@@ -1,7 +1,7 @@
 # AmazingHand Controller – User Manual
 
-> **Version:** 2026-03-21  
-> **Applies to:** `amazing_hand_gui.py` (Desktop GUI)
+> **Version:** 2026-03-22  
+> **Applies to:** `amazing_hand_gui.py` (GUI), `amazing_hand_cmd.py` (CLI)
 
 ---
 
@@ -204,7 +204,48 @@ Located below the finger panel, the log records operations in chronological orde
 
 ---
 
-## 6. Troubleshooting
+## 6. Command-Line Interface (`amazing_hand_cmd.py`)
+
+The CLI lets you apply poses and play sequences directly from a terminal without launching the GUI. It reads the same `data/hand_config.yaml` file.
+
+### 6.1 Basic Usage
+
+```bash
+# List all saved poses and sequences
+python amazing_hand_cmd.py --list
+
+# Apply a single pose
+python amazing_hand_cmd.py --pose open
+python amazing_hand_cmd.py --pose close
+
+# Play a sequence once
+python amazing_hand_cmd.py --sequence demo
+
+# Play a sequence in a loop (Ctrl+C to stop)
+python amazing_hand_cmd.py --sequence wave --loop
+```
+
+### 6.2 Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--pose NAME` | – | Apply the named pose then exit |
+| `--sequence NAME` | – | Play the named sequence then exit |
+| `--list` | – | List all poses and sequences |
+| `--loop` | off | Loop sequence continuously until Ctrl+C |
+| `--port PORT` | `/dev/ttyACM0` (Linux) / `COM9` (Win) | Serial port override |
+| `--baudrate N` | `1000000` | Baud rate override |
+| `--config PATH` | `data/hand_config.yaml` | Path to an alternative config file |
+
+### 6.3 Notes
+
+- Torque is **enabled** on connect and **disabled** on exit so servos relax after the script ends.
+- Per-step speeds and delays behave identically to the GUI sequence player.
+- The `--loop` flag can only be used together with `--sequence`.
+
+---
+
+## 7. Troubleshooting
 
 | Symptom | Suggested Action |
 |---------|-----------------| 
@@ -216,13 +257,14 @@ Located below the finger panel, the log records operations in chronological orde
 
 ---
 
-## 7. Appendix
+## 8. Appendix
 
-### 7.1 File Structure
+### 8.1 File Structure
 
 ```
 AmazingHandGUI/
 ├── amazing_hand_gui.py          # GUI application
+├── amazing_hand_cmd.py          # CLI tool
 ├── data/hand_config.yaml        # Poses & sequences
 ├── docs/user_manual.md          # This document
 ├── docs/screenshots/            # PNG captures embedded in this manual
@@ -230,7 +272,7 @@ AmazingHandGUI/
 └── README.md                    # Quick reference
 ```
 
-### 7.2 Useful Links
+### 8.2 Useful Links
 
 - [AmazingHand (official project)](https://github.com/pollen-robotics/AmazingHand)
 - [Feetech Servo Debug Tool](https://github.com/Robot-Maker-SAS/FeetechServo/tree/main/feetech%20debug%20tool%20master/FD1.9.8.2)
@@ -238,10 +280,11 @@ AmazingHandGUI/
 
 ---
 
-## 8. Revision History
+## 9. Revision History
 
 | Date | Author | Notes |
 |------|--------|-------|
+| 2026-03-22 | Ingo | Added CLI (`amazing_hand_cmd.py`) section; manual version bump. |
 | 2026-03-21 | Ingo | Panel layout update: Ring/Pointer swap, Thumb moved right, control stack moved left. Thumb side slider inverted. Delete pose button added between Apply and Name. Port and Baudrate dropdowns now locked while connected. Keyboard shortcut 1–4 now maps Ring/Middle/Pointer/Thumb. |
 | 2025-11-25 | Ingo | Added expanded screenshot gallery, chart mode explanations, and refreshed panel walkthroughs. |
 | 2025-11-25 | Ingo | Initial manual covering UI panels, workflows, and telemetry usage. |
