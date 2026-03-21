@@ -232,11 +232,13 @@ class FingerControl:
     Note: Even servo IDs have inverted angles in hardware.
     """
     
-    def __init__(self, parent, finger_name, servo1_id, servo2_id, controller, update_callback, invert_side=False, app_config=None):
+    def __init__(self, parent, finger_name, servo1_id, servo2_id, controller, update_callback, invert_side=False, app_config=None, log_callback=None):
+        self.finger_name = finger_name
         self.servo1_id = servo1_id
         self.servo2_id = servo2_id
         self.controller = controller
         self.update_callback = update_callback
+        self.log_callback = log_callback
         self._suppress_events = False
         self.invert_side = invert_side
         self.mode_var = tk.StringVar(value='auto')
@@ -419,7 +421,10 @@ class FingerControl:
         if self.mode_var.get() == 'raw':
             return
         self.side_var.set(0)
-        self.on_side_change(0)
+        self.side_label.config(text="0°")
+        self._sync_raw_from_auto()
+        mimic = self if self.mimic_var.get() else None
+        self.update_callback(mimic_source=mimic)
 
     def open_finger(self):
         """Fully open this finger to 0°."""
@@ -434,7 +439,10 @@ class FingerControl:
             self.pos_label.config(text="0°")
             self.side_label.config(text="0°")
             self._sync_raw_from_auto()
-            self.update_callback()
+            mimic = self if (self.mode_var.get() == 'auto' and self.mimic_var.get()) else None
+            self.update_callback(mimic_source=mimic)
+        if self.log_callback:
+            self.log_callback(f"{self.finger_name}: Open")
 
     def close_finger(self):
         """Fully close this finger to 110°."""
@@ -450,7 +458,10 @@ class FingerControl:
             self.pos_label.config(text=f"{base_max}°")
             self.side_label.config(text="0°")
             self._sync_raw_from_auto()
-            self.update_callback()
+            mimic = self if (self.mode_var.get() == 'auto' and self.mimic_var.get()) else None
+            self.update_callback(mimic_source=mimic)
+        if self.log_callback:
+            self.log_callback(f"{self.finger_name}: Close")
     
     def on_mouse_wheel(self, event):
         """Handle mouse wheel scrolling on position slider."""
@@ -819,6 +830,10 @@ class AmazingHandGUI:
         self.feedback_cells = {}
         self._feedback_styles_ready = False
         self.blocked_error_threshold = 8.0  # Degrees difference signaling blockage
+        self._last_logged_positions = None
+        self._last_log_time = 0.0
+        self._pending_log_positions = None
+        self._pending_log_after_id = None
         
         # Sequence control flags
         self.stop_sequence = False
@@ -924,7 +939,7 @@ class AmazingHandGUI:
             
             finger = FingerControl(
                 parent, name, s1, s2, self.controller, self.on_finger_update,
-                invert_side=(idx == 3), app_config=app_config
+                invert_side=(idx == 3), app_config=app_config, log_callback=self.log
             )
             finger.frame.grid(row=row, column=col, columnspan=2, padx=3, pady=2, sticky='nsew')
             self.fingers.append(finger)
@@ -2373,11 +2388,18 @@ class AmazingHandGUI:
         # Handle mimic functionality
         if mimic_source is not None:
             source_pos = mimic_source.pos_var.get()
-            # Apply to all other fingers that have mimic enabled
+            source_side = mimic_source.side_var.get()
             for finger in self.fingers:
                 if finger != mimic_source and finger.mimic_var.get():
-                    finger.pos_var.set(source_pos)
-                    finger.pos_label.config(text=f"{source_pos}°")
+                    finger._suppress_events = True
+                    try:
+                        finger.pos_var.set(source_pos)
+                        finger.pos_label.config(text=f"{source_pos}°")
+                        finger.side_var.set(source_side)
+                        finger.side_label.config(text=f"{source_side}°")
+                        finger._sync_raw_from_auto()
+                    finally:
+                        finger._suppress_events = False
         
         if not self.updating:
             self.update_pending = True
@@ -2422,12 +2444,30 @@ class AmazingHandGUI:
             self.controller.sync_write_goal_position(servo_ids, positions_rad)
             
             self.status_var.set(f"Updated: {' '.join(str(p) for p in positions)}")
+
+            # Trailing-edge throttled logging: always log final position
+            pos_tuple = tuple(positions)
+            if pos_tuple != self._last_logged_positions:
+                self._pending_log_positions = list(positions)
+                if self._pending_log_after_id is not None:
+                    self.root.after_cancel(self._pending_log_after_id)
+                self._pending_log_after_id = self.root.after(500, self._flush_pending_log)
         
         except Exception as e:
             self.status_var.set(f"Error: {e}")
         
         finally:
             self.updating = False
+    
+    def _flush_pending_log(self):
+        """Log the last pending position command (trailing-edge of throttle)."""
+        self._pending_log_after_id = None
+        if self._pending_log_positions is not None:
+            pos = self._pending_log_positions
+            self._pending_log_positions = None
+            self._last_logged_positions = tuple(pos)
+            pos_repr = '[' + ', '.join(str(p) for p in pos) + ']'
+            self.log(f"CMD → {pos_repr}")
     
     def open_all(self):
         """Set all fingers to open position."""
@@ -2437,6 +2477,7 @@ class AmazingHandGUI:
             finger.on_position_change(0)
             finger.on_side_change(0)
         self.send_positions()
+        self.log("✋ Open All")
     
     def close_all(self):
         """Set all fingers to closed position."""
@@ -2446,6 +2487,7 @@ class AmazingHandGUI:
             finger.on_position_change(110)
             finger.on_side_change(0)
         self.send_positions()
+        self.log("✊ Close All")
     
     def center_all(self):
         """Center all side-to-side movements."""
@@ -2453,6 +2495,7 @@ class AmazingHandGUI:
             finger.side_var.set(0)
             finger.on_side_change(0)
         self.send_positions()
+        self.log("⊙ Center All")
     
     def set_all_speeds(self):
         """Set speed for all finger controls."""
@@ -2462,6 +2505,7 @@ class AmazingHandGUI:
             for finger in self.fingers:
                 finger.speed_var.set(speed)
             self.status_var.set(f"Speed set to {speed} for all fingers")
+            self.log(f"Speed → {speed} for all fingers")
         except (ValueError, AttributeError):
             pass
     
