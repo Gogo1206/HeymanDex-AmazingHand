@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "amazing-hand-gui"
-version = "0.1.0"
+version = "0.8.0"
 description = "GUI and CLI tools for controlling the AmazingHand robot via Feetech SCS0009 servos"
 readme = "README.md"
 license = { file = "LICENSE" }

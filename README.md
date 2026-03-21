@@ -4,23 +4,53 @@ Python GUI and command-line tools to control the AmazingHand robot using Feetech
 
 This project is designed for the [AmazingHand](https://github.com/pollen-robotics/AmazingHand) by Pollen Robotics.
 
+### Project Structure
+
+```
+amazing_hand_gui.py   – Main GUI application
+amazing_hand_cmd.py   – Command-line interface
+hand_logic.py         – Shared business logic (no UI dependencies)
+pyproject.toml        – Package metadata, dependencies, pytest config
+data/
+  config.yaml         – App settings (serial ports, limits, speeds)
+  hand_config.yaml    – Saved poses and sequences
+docs/
+  REQUIREMENTS.md     – Requirements & acceptance criteria
+  user_manual.md      – User manual
+  CONFIG_FORMAT.md    – Config file format reference
+tests/
+  test_hand_logic.py  – Unit tests for hand_logic (89 tests)
+  test_gui_utils.py   – Unit tests for GUI utilities (51 tests)
+  test_cmd.py         – Unit tests for CLI (41 tests)
+  test_integration.py – Integration tests (14 tests)
+  test_system.py      – System tests via subprocess (22 tests)
+  test_system_hardware.py – Hardware tests (33 tests, requires --hardware)
+```
+
 ### Requirements
 
 - Python 3.10 or newer (Tkinter must be included for the GUI)
 - External 5 V power supply for the eight servos
 - USB serial bus adapter and driver installed on your computer
-- Python packages listed in `requirements.txt`
 
-Install the dependencies once (same on Windows, Linux, macOS):
+### Installation
+
+Install with pip (recommended — uses `pyproject.toml`):
 
 ```bash
-python -m pip install -r requirements.txt
+pip install -e .
 ```
 
-On Windows you can also use:
+Or install dependencies directly:
 
 ```bash
-py -3 -m pip install -r requirements.txt
+pip install -r requirements.txt
+```
+
+For development and testing:
+
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ### Default Serial Port
@@ -42,6 +72,7 @@ python amazing_hand_gui.py
 
 Features:
 - Per-finger sliders for open/close and left/right
+- Per-finger Open / Close buttons for quick positioning
 - Per-finger speed selection (1-6) with a global speed sync dropdown
 - Keyboard shortcuts for quick precise movements
 - Pose and sequence management using `data/hand_config.yaml`
@@ -164,6 +195,28 @@ python amazing_hand_cmd.py --sequence wave --loop
 | `--config PATH` | `data/hand_config.yaml` | Alternative config file |
 
 Torque is automatically disabled on all servos when the script exits (including Ctrl+C).
+
+---
+
+### Testing
+
+The project includes 217 unit/integration/system tests plus 33 hardware tests.
+
+#### Run all tests (no hardware required)
+
+```bash
+pytest
+```
+
+#### Run hardware tests (requires connected servos)
+
+```bash
+pytest tests/test_system_hardware.py --hardware --port /dev/ttyACM0
+```
+
+Hardware tests verify real servo communication: connection, pose apply, telemetry reads, individual finger open/close/wave, speed control, sequence execution, and movement detection.
+
+See `docs/REQUIREMENTS.md` for the full requirements and acceptance criteria.
 
 ---
 
