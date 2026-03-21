@@ -368,6 +368,24 @@ class FingerControl:
         )
         self.center_btn.pack(side='left', padx=(8, 0))
         attach_tooltip(self.center_btn, "Reset left/right offset to 0° for this finger.")
+
+        btn_frame = ttk.Frame(right_col)
+        btn_frame.grid(row=3, column=0, sticky='ew', pady=(2, 0))
+        self.open_btn = ttk.Button(
+            btn_frame, text="Open",
+            command=self.open_finger,
+            width=8
+        )
+        self.open_btn.pack(side='left', padx=(0, 2))
+        attach_tooltip(self.open_btn, "Fully open this finger to 0°.")
+
+        self.close_btn = ttk.Button(
+            btn_frame, text="Close",
+            command=self.close_finger,
+            width=8
+        )
+        self.close_btn.pack(side='left', padx=2)
+        attach_tooltip(self.close_btn, "Fully close this finger to 110°.")
         
     def _build_raw_controls(self, parent):
         parent.grid_columnconfigure(0, weight=1)
@@ -402,6 +420,37 @@ class FingerControl:
             return
         self.side_var.set(0)
         self.on_side_change(0)
+
+    def open_finger(self):
+        """Fully open this finger to 0°."""
+        if self.mode_var.get() == 'raw':
+            self.raw_pos1_var.set(0)
+            self.raw_pos2_var.set(0)
+            self._on_raw_change(1, 0)
+            self._on_raw_change(2, 0)
+        else:
+            self.pos_var.set(0)
+            self.side_var.set(0)
+            self.pos_label.config(text="0°")
+            self.side_label.config(text="0°")
+            self._sync_raw_from_auto()
+            self.update_callback()
+
+    def close_finger(self):
+        """Fully close this finger to 110°."""
+        base_max = self.app_config['limits']['base_max']
+        if self.mode_var.get() == 'raw':
+            self.raw_pos1_var.set(base_max)
+            self.raw_pos2_var.set(base_max)
+            self._on_raw_change(1, base_max)
+            self._on_raw_change(2, base_max)
+        else:
+            self.pos_var.set(base_max)
+            self.side_var.set(0)
+            self.pos_label.config(text=f"{base_max}°")
+            self.side_label.config(text="0°")
+            self._sync_raw_from_auto()
+            self.update_callback()
     
     def on_mouse_wheel(self, event):
         """Handle mouse wheel scrolling on position slider."""
