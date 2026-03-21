@@ -13,6 +13,7 @@ import yaml
 
 import amazing_hand_cmd as cmd
 import amazing_hand_gui as gui
+import hand_logic
 
 
 # ---------------------------------------------------------------------------
@@ -147,8 +148,8 @@ class TestConfigRoundTrip:
     def test_gui_save_cmd_read(self, tmp_path, monkeypatch):
         """Pose saved by the GUI can be read back by the CLI's load_config."""
         cf = tmp_path / "hand_config.yaml"
-        monkeypatch.setattr(gui, "CONFIG_FILE", cf)
-        monkeypatch.setattr(gui, "DATA_DIR", tmp_path)
+        monkeypatch.setattr(hand_logic, "CONFIG_FILE", cf)
+        monkeypatch.setattr(hand_logic, "DATA_DIR", tmp_path)
 
         original = {
             "poses": {
@@ -170,8 +171,8 @@ class TestConfigRoundTrip:
 
     def test_negative_positions_survive_round_trip(self, tmp_path, monkeypatch):
         cf = tmp_path / "hand_config.yaml"
-        monkeypatch.setattr(gui, "CONFIG_FILE", cf)
-        monkeypatch.setattr(gui, "DATA_DIR", tmp_path)
+        monkeypatch.setattr(hand_logic, "CONFIG_FILE", cf)
+        monkeypatch.setattr(hand_logic, "DATA_DIR", tmp_path)
 
         positions = [-40, -10, 0, 10, 20, 30, 40, 50]
         gui.save_config({"poses": {"neg": {"positions": positions}}, "sequences": {}})
@@ -181,8 +182,8 @@ class TestConfigRoundTrip:
 
     def test_sequence_steps_survive_round_trip(self, tmp_path, monkeypatch):
         cf = tmp_path / "hand_config.yaml"
-        monkeypatch.setattr(gui, "CONFIG_FILE", cf)
-        monkeypatch.setattr(gui, "DATA_DIR", tmp_path)
+        monkeypatch.setattr(hand_logic, "CONFIG_FILE", cf)
+        monkeypatch.setattr(hand_logic, "DATA_DIR", tmp_path)
 
         steps = [
             "open:3,3,3,3,3,3,3,3|2.0s",

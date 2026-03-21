@@ -41,20 +41,17 @@ except ImportError:
     print("ERROR: rustypot library not found. Install it with: pip install rustypot")
     sys.exit(1)
 
+from hand_logic import (
+    CONFIG_FILE, FINGER_NAMES, SERVO_PAIRS,
+    DEFAULT_PORT_LINUX, DEFAULT_PORT_WINDOWS, DEFAULT_BAUDRATE,
+    angle_rad,
+)
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_CONFIG = Path(__file__).parent / "data" / "hand_config.yaml"
-DEFAULT_PORT_LINUX = "/dev/ttyACM0"
-DEFAULT_PORT_WINDOWS = "COM9"
-DEFAULT_BAUDRATE = 1_000_000
-
-# Servo IDs for each finger position (matches GUI finger order):
-#   Ring(5,6), Middle(3,4), Pointer(1,2), Thumb(7,8)
-# positions[idx*2] → servo1_id, positions[idx*2+1] → servo2_id
-FINGER_NAMES = ["Ring", "Middle", "Pointer", "Thumb"]
-SERVO_PAIRS = [(5, 6), (3, 4), (1, 2), (7, 8)]  # (servo1_id, servo2_id) per finger
+DEFAULT_CONFIG = CONFIG_FILE
 
 
 # ---------------------------------------------------------------------------
@@ -92,14 +89,6 @@ def connect(port: str, baudrate: int) -> Scs0009PyController:
 
     print("Connected.")
     return ctrl
-
-
-def angle_rad(servo_id: int, degrees: float) -> float:
-    """Convert a degree value to radians, applying per-servo inversion."""
-    # Even-numbered servo IDs run mechanically inverted.
-    if servo_id % 2 == 0:
-        return np.deg2rad(-degrees)
-    return np.deg2rad(degrees)
 
 
 def apply_pose(ctrl: Scs0009PyController, positions: list[int], speeds: list[int]) -> None:

@@ -5,6 +5,7 @@ No hardware connection or GUI display is needed; only isolated helper
 functions are exercised.
 """
 import pytest
+import hand_logic
 import amazing_hand_gui as gui
 
 
@@ -20,8 +21,8 @@ def config_path(tmp_path, monkeypatch):
     tests can pre-populate or inspect the YAML file.
     """
     cf = tmp_path / "hand_config.yaml"
-    monkeypatch.setattr(gui, "CONFIG_FILE", cf)
-    monkeypatch.setattr(gui, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(hand_logic, "CONFIG_FILE", cf)
+    monkeypatch.setattr(hand_logic, "DATA_DIR", tmp_path)
     return cf, tmp_path
 
 
