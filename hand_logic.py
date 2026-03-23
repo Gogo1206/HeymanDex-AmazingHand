@@ -443,7 +443,7 @@ def decompose_servo_positions(pos1, pos2, limits):
     pos1 = clamp(int(pos1), servo_min, servo_max)
     pos2 = clamp(int(pos2), servo_min, servo_max)
     base_pos = (pos1 + pos2) // 2
-    side_offset = clamp(pos1 - base_pos, side_min, side_max)
+    side_offset = clamp(base_pos - pos1, side_min, side_max)
     return base_pos, side_offset
 
 

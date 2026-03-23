@@ -22,6 +22,10 @@ Usage examples
 # Override serial port / baudrate:
     python amazing_hand_cmd.py --pose close --port /dev/ttyUSB0 --baudrate 1000000
 
+# Set servo speed (1=slow … 6=fast, default 3):
+    python amazing_hand_cmd.py --pose open --speed 6
+    python amazing_hand_cmd.py --sequence demo --speed 2
+
 # Use an alternative config file:
     python amazing_hand_cmd.py --list --config /path/to/hand_config.yaml
 """
@@ -44,7 +48,7 @@ except ImportError:
 from hand_logic import (
     CONFIG_FILE, FINGER_NAMES, SERVO_PAIRS,
     DEFAULT_PORT_LINUX, DEFAULT_PORT_WINDOWS, DEFAULT_BAUDRATE,
-    angle_rad,
+    angle_rad, coerce_bool,
 )
 
 # ---------------------------------------------------------------------------
@@ -120,9 +124,33 @@ def apply_pose(ctrl: Scs0009PyController, positions: list[int], speeds: list[int
     ctrl.sync_write_goal_position(servo_ids, positions_rad)
 
 
-# ---------------------------------------------------------------------------
-# Step parsing
-# ---------------------------------------------------------------------------
+def wait_for_motion(ctrl: Scs0009PyController, timeout: float = 30.0) -> None:
+    """
+    Block until all 8 servos stop moving or `timeout` seconds elapse.
+
+    Polls each servo's moving flag every 0.1 s.  A 0.3 s startup delay
+    is added so servos have time to actually begin moving before the first
+    poll, avoiding a false "already idle" result.
+    """
+    servo_ids = list(range(1, 9))
+    time.sleep(0.3)  # let motion begin
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            still_moving = any(
+                coerce_bool(ctrl.read_moving(sid))
+                for sid in servo_ids
+            )
+        except Exception:
+            # If reading fails, fall back to waiting out the remaining time
+            time.sleep(min(1.0, deadline - time.monotonic()))
+            continue
+        if not still_moving:
+            return
+        time.sleep(0.1)
+
+
+
 
 def parse_step(step: str) -> tuple | None:
     """
@@ -204,7 +232,7 @@ def cmd_list(config: dict) -> None:
     print()
 
 
-def cmd_pose(ctrl: Scs0009PyController, config: dict, pose_name: str) -> None:
+def cmd_pose(ctrl: Scs0009PyController, config: dict, pose_name: str, speed: int = 3) -> None:
     """Apply a single named pose."""
     poses = config.get("poses", {})
     if pose_name not in poses:
@@ -213,10 +241,11 @@ def cmd_pose(ctrl: Scs0009PyController, config: dict, pose_name: str) -> None:
         sys.exit(1)
 
     positions = poses[pose_name].get("positions", [0] * 8)
-    speeds = [3] * 8
+    speeds = [speed] * 8
 
-    print(f"Applying pose '{pose_name}': {positions}")
+    print(f"Applying pose '{pose_name}' at speed {speed}: {positions}")
     apply_pose(ctrl, positions, speeds)
+    wait_for_motion(ctrl)
 
 
 def cmd_sequence(
@@ -224,6 +253,7 @@ def cmd_sequence(
     config: dict,
     seq_name: str,
     loop: bool,
+    speed: int = 3,
 ) -> None:
     """Play a named sequence, optionally looping."""
     sequences = config.get("sequences", {})
@@ -271,6 +301,11 @@ def cmd_sequence(
             elif parsed[0] == "pose":
                 _, pose_name, speeds, delay = parsed
 
+                # If parse_step returned the default [3]*8 (no speeds embedded in
+                # the step string), replace with the caller-supplied speed.
+                if speeds == [3] * 8:
+                    speeds = [speed] * 8
+
                 if pose_name not in poses:
                     print(f"  WARNING: Pose '{pose_name}' not found, skipping.")
                     continue
@@ -287,11 +322,7 @@ def cmd_sequence(
                 if delay is not None:
                     _interruptible_sleep(delay, stop_flag)
                 else:
-                    # No explicit delay — use speed-based auto-wait (mirrors GUI logic)
-                    avg_speed = sum(speeds) / len(speeds)
-                    auto_wait = 15.0 - (avg_speed - 1) * 2.4
-                    print(f"    (auto-wait {auto_wait:.1f}s)")
-                    _interruptible_sleep(auto_wait, stop_flag)
+                    wait_for_motion(ctrl)
 
         if not loop:
             break
@@ -355,6 +386,14 @@ def main() -> None:
         default=DEFAULT_CONFIG,
         help=f"Path to hand_config.yaml (default: {DEFAULT_CONFIG})",
     )
+    parser.add_argument(
+        "--speed",
+        type=int,
+        default=3,
+        choices=range(1, 7),
+        metavar="N",
+        help="Servo speed 1 (slow) … 6 (fast), default 3. Overridden per-step in sequences that embed explicit speeds.",
+    )
 
     args = parser.parse_args()
 
@@ -372,9 +411,9 @@ def main() -> None:
 
     try:
         if args.pose:
-            cmd_pose(ctrl, config, args.pose)
+            cmd_pose(ctrl, config, args.pose, speed=args.speed)
         elif args.sequence:
-            cmd_sequence(ctrl, config, args.sequence, loop=args.loop)
+            cmd_sequence(ctrl, config, args.sequence, loop=args.loop, speed=args.speed)
     finally:
         # Disable torque on exit so servos relax
         try:
