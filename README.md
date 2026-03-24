@@ -19,12 +19,13 @@ docs/
   user_manual.md      – User manual
   CONFIG_FORMAT.md    – Config file format reference
 tests/
-  test_hand_logic.py  – Unit tests for hand_logic (89 tests)
+  test_hand_logic.py  – Unit tests for hand_logic (155 tests)
   test_gui_utils.py   – Unit tests for GUI utilities (51 tests)
-  test_cmd.py         – Unit tests for CLI (41 tests)
+  test_cmd.py         – Unit tests for CLI (42 tests)
   test_integration.py – Integration tests (14 tests)
   test_system.py      – System tests via subprocess (22 tests)
   test_system_hardware.py – Hardware tests (33 tests, requires --hardware)
+  test_cmd_hardware.py    – CMD hardware tests (21 tests, requires --hardware)
 ```
 
 ### Requirements
@@ -60,7 +61,7 @@ Both the GUI and CLI try to choose a sensible default serial port:
 - Windows: `COM9`
 - Linux/macOS: `/dev/ttyACM0`
 
-You can override this with the `--port` option, e.g. `python amazing_hand_gui.py --port COM4`.
+You can override this with the `--port` option, e.g. `python amazing_hand_gui.py --port /dev/ttyUSB0` (Linux) or `python amazing_hand_gui.py --port COM4` (Windows).
 
 ---
 
@@ -70,13 +71,14 @@ If installed with pip:
 
 ```bash
 amazing-hand-gui
-amazing-hand-gui --port COM4
+amazing-hand-gui --port /dev/ttyUSB0
 ```
 
 Or run directly:
 
 ```bash
 python amazing_hand_gui.py
+python amazing_hand_gui.py --port /dev/ttyUSB0
 ```
 
 Features:
@@ -141,18 +143,29 @@ poses:
   open:
     positions: [0, 0, 0, 0, 0, 0, 0, 0]
   close:
-    positions: [110, 0, 110, 0, 110, 0, 110, 0]
+    positions: [110, 110, 110, 110, 110, 110, 110, 110]
+  ring_close:
+    positions: [110, 0, 0, 0, 0, 0, 0, 0]
 
 sequences:
+  wave:
+    steps:
+      - "open:6,6,6,6,6,6,6,6|0.8s"
+      - "wave_r:5,5,5,5,5,5,5,5|0.6s"
+      - "wave_l:5,5,5,5,5,5,5,5|0.6s"
+      - "open:5,5,5,5,5,5,5,5|0.8s"
+  finger_roll:
+    steps:
+      - "open:6,6,6,6,6,6,6,6|0.5s"
+      - "ring_close:5,5,5,5,5,5,5,5|0.6s"
+      - "open:5,5,5,5,5,5,5,5|0.5s"
+      - "middle_close:5,5,5,5,5,5,5,5|0.6s"
+      - "open:5,5,5,5,5,5,5,5|0.5s"
   demo:
     steps:
       - "open:3,3,3,3,3,3,3,3|2.0s"
       - "close:3,3,3,3,3,3,3,3|2.0s"
       - "SLEEP:1.0s"
-  wave:
-    steps:
-      - "close:5,5,5,5,5,5,5,5|0.8s"
-      - "open:2,2,2,2,2,2,2,2|0.8s"
 ```
 
 Loop behavior is handled at runtime (GUI checkbox) and is no longer stored in YAML.
@@ -166,39 +179,79 @@ The GUI automatically creates `data/hand_config.yaml` if it doesn't exist.
 A standalone command-line tool for applying poses and playing sequences without the GUI.
 It reads the same `data/hand_config.yaml` used by the GUI.
 
-If installed with pip:
+#### Linux: serial port access
+
+The USB serial adapter typically appears as `/dev/ttyACM0` (Waveshare / CDC-ACM) or `/dev/ttyUSB0` (FTDI / CH340).
+
+Find it with:
+```bash
+ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
+# or
+dmesg | grep -E 'ttyACM|ttyUSB' | tail -5
+```
+
+If you get a **Permission denied** error, add your user to the `dialout` group and log out/in:
+```bash
+sudo usermod -aG dialout $USER
+```
+
+#### If installed with pip
 
 ```bash
 amazing-hand-cmd --list
 amazing-hand-cmd --pose open
 amazing-hand-cmd --sequence demo --loop
+amazing-hand-cmd --pose open --speed 6
+# Override port if needed:
+amazing-hand-cmd --pose open --port /dev/ttyUSB0
 ```
 
-Or run directly:
+#### Run directly
 
-#### List available poses and sequences
+##### List available poses and sequences
 
 ```bash
 python amazing_hand_cmd.py --list
 ```
 
-#### Apply a single pose
+##### Apply a single pose
 
 ```bash
 python amazing_hand_cmd.py --pose open
 python amazing_hand_cmd.py --pose close
+python amazing_hand_cmd.py --pose scissors --speed 6
 ```
 
-#### Play a sequence once
+##### Set servo speed (1 slow … 6 fast, default 3)
+
+```bash
+python amazing_hand_cmd.py --pose close --speed 6
+python amazing_hand_cmd.py --sequence wave --speed 4
+```
+
+##### Override serial port
+
+```bash
+python amazing_hand_cmd.py --pose open --port /dev/ttyACM0
+python amazing_hand_cmd.py --pose open --port /dev/ttyUSB0
+```
+
+##### Play a sequence once
 
 ```bash
 python amazing_hand_cmd.py --sequence demo
 ```
 
-#### Play a sequence in a loop (Ctrl+C to stop)
+##### Play a sequence in a loop (Ctrl+C to stop)
 
 ```bash
 python amazing_hand_cmd.py --sequence wave --loop
+```
+
+##### Use an alternative config file
+
+```bash
+python amazing_hand_cmd.py --list --config /path/to/hand_config.yaml
 ```
 
 #### Options
@@ -209,6 +262,7 @@ python amazing_hand_cmd.py --sequence wave --loop
 | `--sequence NAME` | – | Play the named sequence |
 | `--list` | – | List all poses and sequences |
 | `--loop` | off | Loop sequence until Ctrl+C |
+| `--speed N` | `3` | Servo speed 1 (slow) … 6 (fast) |
 | `--port PORT` | `/dev/ttyACM0` (Linux) / `COM9` (Win) | Serial port |
 | `--baudrate N` | `1000000` | Baud rate |
 | `--config PATH` | `data/hand_config.yaml` | Alternative config file |
@@ -219,7 +273,7 @@ Torque is automatically disabled on all servos when the script exits (including 
 
 ### Testing
 
-The project includes 217 unit/integration/system tests plus 33 hardware tests.
+The project includes 284 unit/integration/system tests plus 54 hardware tests.
 
 #### Run all tests (no hardware required)
 
@@ -227,13 +281,18 @@ The project includes 217 unit/integration/system tests plus 33 hardware tests.
 pytest
 ```
 
-#### Run hardware tests (requires connected servos)
+#### Run GUI+CLI hardware tests (requires connected servos)
 
 ```bash
 pytest tests/test_system_hardware.py --hardware --port /dev/ttyACM0
+pytest tests/test_cmd_hardware.py --hardware --port /dev/ttyACM0
+# or both at once:
+pytest tests/test_system_hardware.py tests/test_cmd_hardware.py --hardware
 ```
 
-Hardware tests verify real servo communication: connection, pose apply, telemetry reads, individual finger open/close/wave, speed control, sequence execution, and movement detection.
+`test_system_hardware.py` verifies connection, pose apply, telemetry reads, individual finger open/close/wave, speed control, sequence execution, and movement detection.
+
+`test_cmd_hardware.py` verifies the CLI layer end-to-end: pose positions, speed parameter, sequence steps, `wait_for_motion`, `--list` output, and torque disable.
 
 See `docs/REQUIREMENTS.md` for the full requirements and acceptance criteria.
 

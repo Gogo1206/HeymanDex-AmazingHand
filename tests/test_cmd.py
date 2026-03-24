@@ -225,17 +225,21 @@ class TestApplyPose:
         assert rads[1] == pytest.approx(math.radians(-90))
 
     def test_speeds_applied_per_servo(self, ctrl):
+        # speeds are in finger order matching SERVO_PAIRS: [(5,6),(3,4),(1,2),(7,8)]
+        # speeds[0]→servo5, speeds[1]→servo6, speeds[2]→servo3, speeds[3]→servo4,
+        # speeds[4]→servo1, speeds[5]→servo2, speeds[6]→servo7, speeds[7]→servo8
         speeds = [1, 2, 3, 4, 5, 6, 1, 2]
         cmd.apply_pose(ctrl, [0] * 8, speeds)
         speed_calls = [c.args for c in ctrl.write_goal_speed.call_args_list]
-        # Speeds are sent in SERVO_PAIRS order: (s1, spd1), (s2, spd2), ...
-        # SERVO_PAIRS: (5,6),(3,4),(1,2),(7,8)
-        # speeds[0]→servo5, speeds[1]→servo6, speeds[2]→servo3, ...
         servo_to_speed = {servo_id: spd for servo_id, spd in speed_calls}
-        assert servo_to_speed[5] == 1
-        assert servo_to_speed[6] == 2
-        assert servo_to_speed[3] == 3
-        assert servo_to_speed[4] == 4
+        assert servo_to_speed[5] == 1   # speeds[0]
+        assert servo_to_speed[6] == 2   # speeds[1]
+        assert servo_to_speed[3] == 3   # speeds[2]
+        assert servo_to_speed[4] == 4   # speeds[3]
+        assert servo_to_speed[1] == 5   # speeds[4]
+        assert servo_to_speed[2] == 6   # speeds[5]
+        assert servo_to_speed[7] == 1   # speeds[6]
+        assert servo_to_speed[8] == 2   # speeds[7]
 
 
 # ---------------------------------------------------------------------------
@@ -261,26 +265,50 @@ class TestInterruptibleSleep:
 
 
 # ---------------------------------------------------------------------------
-# Auto-wait calculation (FR-SEQ-2 AC 2.3)
+# wait_for_motion (FR-SEQ-2 AC 2.3)
 # ---------------------------------------------------------------------------
 
-class TestAutoWait:
-    """AC 2.3: No explicit delay → auto-wait = 15.0 − (avg_speed − 1) × 2.4."""
+class TestWaitForMotion:
+    """AC 2.3: wait_for_motion exits as soon as all servos stop moving."""
 
-    def test_speed_3_auto_wait(self):
-        avg = 3.0
-        auto_wait = 15.0 - (avg - 1) * 2.4
-        assert auto_wait == pytest.approx(10.2)
+    @pytest.fixture()
+    def ctrl(self):
+        return MagicMock()
 
-    def test_speed_1_auto_wait(self):
-        avg = 1.0
-        auto_wait = 15.0 - (avg - 1) * 2.4
-        assert auto_wait == pytest.approx(15.0)
+    def test_exits_when_all_servos_idle(self, ctrl):
+        """Returns immediately once all moving flags are 0."""
+        ctrl.read_moving.return_value = 0
+        start = time.monotonic()
+        cmd.wait_for_motion(ctrl, timeout=5.0)
+        # Should finish well before the timeout
+        assert time.monotonic() - start < 3.0
 
-    def test_speed_6_auto_wait(self):
-        avg = 6.0
-        auto_wait = 15.0 - (avg - 1) * 2.4
-        assert auto_wait == pytest.approx(3.0)
+    def test_waits_while_any_servo_moving(self, ctrl):
+        """Stays in loop while at least one servo reports moving=1."""
+        call_count = [0]
+        def _moving(sid):
+            call_count[0] += 1
+            # Report moving for the first few polls, then idle
+            return 1 if call_count[0] < 5 else 0
+        ctrl.read_moving.side_effect = _moving
+        cmd.wait_for_motion(ctrl, timeout=5.0)
+        # Must have polled more than once
+        assert ctrl.read_moving.call_count > 1
+
+    def test_timeout_respected(self, ctrl):
+        """Hard timeout fires when servos never stop moving."""
+        ctrl.read_moving.return_value = 1  # always moving
+        start = time.monotonic()
+        cmd.wait_for_motion(ctrl, timeout=0.5)
+        elapsed = time.monotonic() - start
+        # Should stop around 0.5 s, not hang
+        assert elapsed < 2.0
+
+    def test_read_exception_does_not_raise(self, ctrl):
+        """A read failure is swallowed and we eventually hit the timeout."""
+        ctrl.read_moving.side_effect = RuntimeError("serial error")
+        # Should not propagate the exception
+        cmd.wait_for_motion(ctrl, timeout=0.4)
 
 
 # ---------------------------------------------------------------------------

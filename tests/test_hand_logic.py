@@ -319,7 +319,7 @@ class TestDecomposeServoPositions:
         """Different positions → averaged base with side offset."""
         base, side = hand_logic.decompose_servo_positions(70, 40, self.LIMITS)
         assert base == 55
-        assert side == 15  # 70 - 55
+        assert side == -15  # 55 - 70 (pos1 > pos2 means left → negative)
 
     def test_clamping_large_offset(self):
         """Very large offset clamped to side_max."""
@@ -621,3 +621,413 @@ class TestAngleRadLogic:
     def test_zero(self):
         assert hand_logic.angle_rad(1, 0) == pytest.approx(0.0)
         assert hand_logic.angle_rad(2, 0) == pytest.approx(0.0)
+
+    def test_odd_negative_degrees(self):
+        """Negative degrees on odd servo stay negative."""
+        assert hand_logic.angle_rad(3, -45) == pytest.approx(np.deg2rad(-45))
+
+    def test_even_negative_degrees_flipped(self):
+        """Negative degrees on even servo become positive radians."""
+        assert hand_logic.angle_rad(4, -45) == pytest.approx(np.deg2rad(45))
+
+    def test_higher_odd_servo_id(self):
+        assert hand_logic.angle_rad(7, 60) == pytest.approx(np.deg2rad(60))
+
+    def test_higher_even_servo_id(self):
+        assert hand_logic.angle_rad(8, 60) == pytest.approx(np.deg2rad(-60))
+
+
+# ===================================================================
+# clamp
+# ===================================================================
+
+class TestClamp:
+
+    def test_within_range(self):
+        assert hand_logic.clamp(50, 0, 110) == 50
+
+    def test_at_min(self):
+        assert hand_logic.clamp(0, 0, 110) == 0
+
+    def test_at_max(self):
+        assert hand_logic.clamp(110, 0, 110) == 110
+
+    def test_below_min(self):
+        assert hand_logic.clamp(-10, 0, 110) == 0
+
+    def test_above_max(self):
+        assert hand_logic.clamp(200, 0, 110) == 110
+
+    def test_negative_range(self):
+        assert hand_logic.clamp(-50, -40, 40) == -40
+
+    def test_float_values(self):
+        assert hand_logic.clamp(0.5, 0.0, 1.0) == pytest.approx(0.5)
+
+
+# ===================================================================
+# validate_name
+# ===================================================================
+
+class TestValidateName:
+
+    def test_valid_simple_name(self):
+        ok, msg = hand_logic.validate_name("open")
+        assert ok is True
+        assert msg == ""
+
+    def test_valid_with_spaces_inside(self):
+        ok, _ = hand_logic.validate_name("my pose")
+        assert ok is True
+
+    def test_valid_with_numbers(self):
+        ok, _ = hand_logic.validate_name("pose1")
+        assert ok is True
+
+    def test_empty_string(self):
+        ok, msg = hand_logic.validate_name("")
+        assert ok is False
+        assert "empty" in msg.lower()
+
+    def test_whitespace_only(self):
+        ok, msg = hand_logic.validate_name("   ")
+        assert ok is False
+        assert "empty" in msg.lower()
+
+    def test_too_long(self):
+        ok, msg = hand_logic.validate_name("x" * 51)
+        assert ok is False
+        assert "long" in msg.lower()
+
+    def test_exactly_50_chars_valid(self):
+        ok, _ = hand_logic.validate_name("x" * 50)
+        assert ok is True
+
+    def test_forbidden_colon(self):
+        ok, msg = hand_logic.validate_name("pose:1")
+        assert ok is False
+        assert ":" in msg
+
+    def test_forbidden_brace(self):
+        ok, _ = hand_logic.validate_name("pose{x}")
+        assert ok is False
+
+    def test_forbidden_bracket(self):
+        ok, _ = hand_logic.validate_name("pose[0]")
+        assert ok is False
+
+    def test_forbidden_single_quote(self):
+        ok, _ = hand_logic.validate_name("it's")
+        assert ok is False
+
+    def test_forbidden_double_quote(self):
+        ok, _ = hand_logic.validate_name('say "hi"')
+        assert ok is False
+
+    def test_forbidden_hash(self):
+        ok, _ = hand_logic.validate_name("pose#1")
+        assert ok is False
+
+    def test_forbidden_dash(self):
+        ok, _ = hand_logic.validate_name("pose-1")
+        assert ok is False
+
+    def test_control_character(self):
+        ok, msg = hand_logic.validate_name("bad\x01name")
+        assert ok is False
+        assert "control" in msg.lower()
+
+    def test_leading_space_stripped_silently(self):
+        """Leading spaces are stripped — name is accepted as valid."""
+        ok, _ = hand_logic.validate_name(" leading")
+        assert ok is True
+
+    def test_trailing_space_stripped_silently(self):
+        """Trailing spaces are stripped — name is accepted as valid."""
+        ok, _ = hand_logic.validate_name("trailing ")
+        assert ok is True
+
+
+# ===================================================================
+# load_config / save_config
+# ===================================================================
+
+class TestLoadConfig:
+
+    def test_missing_file_returns_empty_structure(self, logic_paths):
+        data = hand_logic.load_config()
+        assert data == {'poses': {}, 'sequences': {}}
+
+    def test_present_file_reads_poses(self, logic_paths):
+        cf, _, _ = logic_paths
+        cf.write_text(
+            "poses:\n"
+            "  fist:\n"
+            "    positions: [110, 110, 110, 110, 110, 110, 110, 110]\n"
+        )
+        data = hand_logic.load_config()
+        assert 'fist' in data['poses']
+
+    def test_missing_poses_key_filled(self, logic_paths):
+        cf, _, _ = logic_paths
+        cf.write_text("sequences:\n  seq1:\n    steps: []\n")
+        data = hand_logic.load_config()
+        assert data['poses'] == {}
+
+    def test_missing_sequences_key_filled(self, logic_paths):
+        cf, _, _ = logic_paths
+        cf.write_text("poses:\n  p1:\n    positions: [0,0,0,0,0,0,0,0]\n")
+        data = hand_logic.load_config()
+        assert data['sequences'] == {}
+
+    def test_corrupt_yaml_returns_empty(self, logic_paths):
+        cf, _, _ = logic_paths
+        cf.write_text("this: is: {broken\n")
+        data = hand_logic.load_config()
+        assert data == {'poses': {}, 'sequences': {}}
+
+
+class TestSaveConfig:
+
+    def test_save_creates_file(self, logic_paths):
+        cf, _, _ = logic_paths
+        result = hand_logic.save_config({'poses': {}, 'sequences': {}})
+        assert result is True
+        assert cf.exists()
+
+    def test_round_trip(self, logic_paths):
+        """Data saved and loaded back is identical."""
+        original = {
+            'poses': {
+                'open': {'positions': [0, 0, 0, 0, 0, 0, 0, 0]},
+                'close': {'positions': [110, 110, 110, 110, 110, 110, 110, 110]},
+            },
+            'sequences': {},
+        }
+        hand_logic.save_config(original)
+        loaded = hand_logic.load_config()
+        assert loaded['poses']['open']['positions'] == [0, 0, 0, 0, 0, 0, 0, 0]
+        assert loaded['poses']['close']['positions'] == [110] * 8
+
+    def test_positions_formatted_inline(self, logic_paths):
+        """Positions array must appear on one line, not block-style."""
+        cfg = {'poses': {'p': {'positions': [0, 10, 20, 30, 40, 50, 60, 70]}}, 'sequences': {}}
+        hand_logic.save_config(cfg)
+        text = logic_paths[0].read_text()
+        assert 'positions: [0, 10, 20, 30, 40, 50, 60, 70]' in text
+
+    def test_save_returns_false_on_unwritable(self, logic_paths, tmp_path, monkeypatch):
+        """Returns False (no exception) when file cannot be written."""
+        readonly_dir = tmp_path / "readonly"
+        readonly_dir.mkdir()
+        readonly_dir.chmod(0o555)
+        monkeypatch.setattr(hand_logic, "CONFIG_FILE", readonly_dir / "hand_config.yaml")
+        monkeypatch.setattr(hand_logic, "DATA_DIR", readonly_dir)
+        result = hand_logic.save_config({'poses': {}, 'sequences': {}})
+        assert result is False
+        readonly_dir.chmod(0o755)
+
+
+# ===================================================================
+# compute_auto_positions — extended edge cases
+# ===================================================================
+
+class TestComputeAutoPositionsEdgeCases:
+
+    LIMITS = {
+        'base_min': 0, 'base_max': 110,
+        'side_min': -40, 'side_max': 40,
+        'servo_min': -40, 'servo_max': 110,
+    }
+    EXTREMES = {
+        'left_open': [25, -40],
+        'right_open': [-40, 25],
+        'left_closed': [110, 110],
+        'right_closed': [110, 110],
+        'center_open': [0, 0],
+        'center_closed': [110, 110],
+    }
+
+    def test_full_left_closed(self):
+        """side=-40, base=110 → left_closed = [110, 110]."""
+        p1, p2 = hand_logic.compute_auto_positions(110, -40, self.LIMITS, self.EXTREMES)
+        assert p1 == 110
+        assert p2 == 110
+
+    def test_full_right_closed(self):
+        """side=+40, base=110 → right_closed = [110, 110]."""
+        p1, p2 = hand_logic.compute_auto_positions(110, 40, self.LIMITS, self.EXTREMES)
+        assert p1 == 110
+        assert p2 == 110
+
+    def test_base_clamped_below_zero(self):
+        """base_pos < 0 clamped to base_min=0."""
+        p1, p2 = hand_logic.compute_auto_positions(-10, 0, self.LIMITS, self.EXTREMES)
+        assert p1 == 0
+        assert p2 == 0
+
+    def test_base_clamped_above_max(self):
+        """base_pos > 110 clamped to base_max=110."""
+        p1, p2 = hand_logic.compute_auto_positions(200, 0, self.LIMITS, self.EXTREMES)
+        assert p1 == 110
+        assert p2 == 110
+
+    def test_side_clamped_below_min(self):
+        """side_offset < -40 clamped to side_min."""
+        p1_clamped, p2_clamped = hand_logic.compute_auto_positions(0, -100, self.LIMITS, self.EXTREMES)
+        p1_exact, p2_exact = hand_logic.compute_auto_positions(0, -40, self.LIMITS, self.EXTREMES)
+        assert p1_clamped == p1_exact
+        assert p2_clamped == p2_exact
+
+    def test_side_clamped_above_max(self):
+        """side_offset > 40 clamped to side_max."""
+        p1_clamped, p2_clamped = hand_logic.compute_auto_positions(0, 100, self.LIMITS, self.EXTREMES)
+        p1_exact, p2_exact = hand_logic.compute_auto_positions(0, 40, self.LIMITS, self.EXTREMES)
+        assert p1_clamped == p1_exact
+        assert p2_clamped == p2_exact
+
+    def test_half_left_mid_base(self):
+        """Partial left, partial closed — within servo bounds."""
+        p1, p2 = hand_logic.compute_auto_positions(55, -20, self.LIMITS, self.EXTREMES)
+        assert -40 <= p1 <= 110
+        assert -40 <= p2 <= 110
+
+    def test_output_types_are_int(self):
+        p1, p2 = hand_logic.compute_auto_positions(50, 10, self.LIMITS, self.EXTREMES)
+        assert isinstance(p1, int)
+        assert isinstance(p2, int)
+
+
+# ===================================================================
+# decompose_servo_positions — extended edge cases
+# ===================================================================
+
+class TestDecomposeServoPositionsEdgeCases:
+
+    LIMITS = {
+        'servo_min': -40, 'servo_max': 110,
+        'side_min': -40, 'side_max': 40,
+    }
+
+    def test_pos2_greater_gives_positive_side(self):
+        """pos2 > pos1 → right direction → positive side offset."""
+        base, side = hand_logic.decompose_servo_positions(40, 70, self.LIMITS)
+        assert base == 55
+        assert side == 15   # 55 - 40 = 15 (positive = right)
+
+    def test_left_direction_is_negative(self):
+        """pos1 > pos2 → left direction → negative side offset."""
+        base, side = hand_logic.decompose_servo_positions(70, 40, self.LIMITS)
+        assert side < 0
+
+    def test_right_direction_is_positive(self):
+        """pos2 > pos1 → right direction → positive side offset."""
+        base, side = hand_logic.decompose_servo_positions(40, 70, self.LIMITS)
+        assert side > 0
+
+    def test_sign_inverted_between_left_and_right(self):
+        """Swapping pos1/pos2 should negate the side offset."""
+        _, side_l = hand_logic.decompose_servo_positions(70, 40, self.LIMITS)
+        _, side_r = hand_logic.decompose_servo_positions(40, 70, self.LIMITS)
+        assert side_l == -side_r
+
+    def test_positive_side_offset_clamped_to_side_max(self):
+        """Very large positive offset (pos1 very low, pos2 very high) is clamped."""
+        base, side = hand_logic.decompose_servo_positions(-40, 110, self.LIMITS)
+        assert -40 <= side <= 40
+
+    def test_base_is_midpoint(self):
+        """Base is always the midpoint of pos1 and pos2."""
+        base, _ = hand_logic.decompose_servo_positions(30, 80, self.LIMITS)
+        assert base == (30 + 80) // 2
+
+    def test_both_at_servo_min(self):
+        base, side = hand_logic.decompose_servo_positions(-40, -40, self.LIMITS)
+        assert base == -40
+        assert side == 0
+
+    def test_both_at_servo_max(self):
+        base, side = hand_logic.decompose_servo_positions(110, 110, self.LIMITS)
+        assert base == 110
+        assert side == 0
+
+
+# ===================================================================
+# get_time_window_indices — extended edge cases
+# ===================================================================
+
+class TestGetTimeWindowIndicesEdgeCases:
+
+    def test_zoom_below_min_clamped(self):
+        """Zoom < 0.05 clamped — window is at least 2 points."""
+        start, end = hand_logic.get_time_window_indices(100, 0.001, 0.0)
+        assert end - start >= 2
+
+    def test_pan_below_zero_clamped_to_start(self):
+        start, end = hand_logic.get_time_window_indices(100, 0.5, -1.0)
+        assert start == 0
+
+    def test_total_equals_one(self):
+        """Single data point — window is the whole dataset."""
+        start, end = hand_logic.get_time_window_indices(1, 1.0, 0.0)
+        assert start == 0
+        assert end == 1
+
+    def test_window_never_exceeds_total(self):
+        """Window size cannot exceed total."""
+        start, end = hand_logic.get_time_window_indices(10, 2.0, 0.0)
+        assert end - start <= 10
+
+    def test_full_pan_at_full_zoom_still_shows_all(self):
+        start, end = hand_logic.get_time_window_indices(50, 1.0, 1.0)
+        assert start == 0
+        assert end == 50
+
+
+# ===================================================================
+# load_to_percent — extended edge cases
+# ===================================================================
+
+class TestLoadToPercentEdgeCases:
+
+    def test_negative_large_clamped_at_minus_150(self):
+        result = hand_logic.load_to_percent(-2000.0)
+        assert result == pytest.approx(-150.0)
+
+    def test_boundary_exactly_1_5(self):
+        """Magnitude == 1.5 uses the *100 path → 150%."""
+        result = hand_logic.load_to_percent(1.5)
+        assert result == pytest.approx(150.0)
+
+    def test_boundary_above_1_5(self):
+        """Magnitude just above 1.5 uses /10.23 path."""
+        result = hand_logic.load_to_percent(1.51)
+        # 1.51 / 10.23 ≈ 0.1476 → well below 150
+        assert 0 < result < 150.0
+
+    def test_integer_input(self):
+        result = hand_logic.load_to_percent(1)
+        assert result == pytest.approx(100.0)
+
+
+# ===================================================================
+# format_feedback_value — extended edge cases
+# ===================================================================
+
+class TestFormatFeedbackValueEdgeCases:
+
+    def test_status_high_byte_masked(self):
+        """Status must mask to 0xFF."""
+        assert hand_logic.format_feedback_value('status', 256) == '0x00'
+
+    def test_status_lower_nibble(self):
+        assert hand_logic.format_feedback_value('status', 16) == '0x10'
+
+    def test_unknown_key_with_float(self):
+        """Unknown key falls back to str()."""
+        assert hand_logic.format_feedback_value('foo', 3.14) == '3.14'
+
+    def test_load_negative_value(self):
+        """Negative load returns negative percent string."""
+        result = hand_logic.format_feedback_value('load', -1.0)
+        assert result.startswith('-')
