@@ -10,7 +10,7 @@ poses:
   victory:
     positions: [110, 110, -33, 26, 15, -19, 110, 110]
   two:
-    positions: [110, 110, 2, -3, 0, 0, 110, 110]
+    positions: [110, 110, 0, 0, 0, 0, 110, 110]
   paper:
     positions: [16, -21, 1, 1, -17, 13, 110, 110]
   stone:
@@ -31,6 +31,12 @@ poses:
     positions: [0, 0, 0, 0, 110, 0, 0, 0]
   thumb_close:
     positions: [0, 0, 0, 0, 0, 0, 110, 0]
+  one:
+    positions: [110, 110, 110, 110, 0, 0, 110, 110]
+  three:
+    positions: [0, 0, 0, 0, 0, 0, 110, 110]
+  hifive:
+    positions: [0, 0, 0, 0, 0, 0, -40, 32]
 sequences:
   demo:
     steps:
