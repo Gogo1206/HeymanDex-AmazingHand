@@ -5,6 +5,9 @@ serial:
   # Default serial port for Windows/Linux
   port_windows: COM9
   port_linux: /dev/ttyACM0
+  # macOS port names are dynamic (e.g. /dev/cu.usbmodemXXXX); the connected
+  # device is auto-detected, and this glob is only a fallback hint.
+  port_mac: /dev/cu.usbmodem*
   # Communication baudrate
   baudrate: 1000000
   # Available baudrate options
@@ -25,12 +28,12 @@ servos:
 # Servo angle limits (degrees)
 limits:
   # Range for raw servo positions
-  servo_min: -40
-  servo_max: 110
+  servo_min: -75
+  servo_max: 75
   
   # Range for auto mode base position (close/open)
-  base_min: 0
-  base_max: 110
+  base_min: -75
+  base_max: 75
   
   # Range for auto mode side offset (left/right)
   side_min: -40
@@ -47,10 +50,10 @@ speeds:
 auto_extremes:
   left_open: [32, -40]
   right_open: [-40, 32]
-  left_closed: [110, 110]
-  right_closed: [110, 110]
+  left_closed: [75, 75]
+  right_closed: [75, 75]
   center_open: [0, 0]
-  center_closed: [110, 110]
+  center_closed: [75, 75]
 
 # Data file paths
 paths:

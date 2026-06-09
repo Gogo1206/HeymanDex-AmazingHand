@@ -18,8 +18,10 @@ Hand logic module — pure business logic with no UI dependencies.
 Provides configuration management, servo math, data conversion, and
 validation functions shared by the GUI and CLI tools.
 """
+import glob
 import os
 import re
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -42,7 +44,19 @@ SERVO_PAIRS = [(5, 6), (3, 4), (1, 2), (7, 8)]  # (servo1_id, servo2_id)
 
 DEFAULT_PORT_LINUX = "/dev/ttyACM0"
 DEFAULT_PORT_WINDOWS = "COM9"
+# macOS exposes USB serial adapters as /dev/cu.* with a dynamic suffix, so there
+# is no single fixed default; this glob is only a hint used when nothing is found.
+DEFAULT_PORT_MAC = "/dev/cu.usbmodem*"
 DEFAULT_BAUDRATE = 1_000_000
+
+# Glob patterns for auto-detecting connected serial adapters per platform.
+MAC_PORT_GLOBS = (
+    "/dev/cu.usbmodem*",
+    "/dev/cu.usbserial*",
+    "/dev/cu.wchusbserial*",
+    "/dev/cu.SLAB_USBtoUART*",
+)
+LINUX_PORT_GLOBS = ("/dev/ttyACM*", "/dev/ttyUSB*", "/dev/ttyAMA*")
 
 KEYBOARD_HELP_TEXT = """\
         KEYBOARD CONTROLS
@@ -92,6 +106,7 @@ def load_app_config():
         'serial': {
             'port_windows': 'COM9',
             'port_linux': '/dev/ttyACM0',
+            'port_mac': DEFAULT_PORT_MAC,
             'baudrate': 1000000,
             'baudrate_options': [9600, 115200, 1000000]
         },
@@ -148,11 +163,38 @@ def load_app_config():
         return default_config
 
 
+def detect_serial_ports():
+    """Return a sorted list of likely serial ports for the current platform.
+
+    Uses glob against the device-node patterns each OS uses for USB serial
+    adapters.  On macOS this is the ``/dev/cu.*`` family (call-up devices —
+    the correct nodes for outgoing connections; ``/dev/tty.*`` block on
+    carrier-detect).  Returns an empty list when nothing is connected.
+    """
+    if os.name == 'nt':
+        return [f'COM{i}' for i in range(1, 21)]
+    patterns = MAC_PORT_GLOBS if sys.platform == 'darwin' else LINUX_PORT_GLOBS
+    ports = []
+    for pattern in patterns:
+        ports.extend(glob.glob(pattern))
+    return sorted(ports)
+
+
 def default_serial_port():
-    """Return platform-specific default serial port from config."""
+    """Return the best-guess default serial port for the current platform.
+
+    Windows and Linux use the fixed value from config.  macOS port names are
+    dynamic (e.g. ``/dev/cu.usbmodem<serial>``), so the connected device is
+    auto-detected; if none is found we fall back to the ``port_mac`` hint.
+    """
     config = load_app_config()
     if os.name == 'nt':
         return config['serial']['port_windows']
+    if sys.platform == 'darwin':
+        detected = detect_serial_ports()
+        if detected:
+            return detected[0]
+        return config['serial'].get('port_mac', DEFAULT_PORT_MAC)
     return config['serial']['port_linux']
 
 

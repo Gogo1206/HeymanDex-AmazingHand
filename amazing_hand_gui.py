@@ -110,7 +110,7 @@ from hand_logic import (
     APP_VERSION,
     BASE_DIR, DATA_DIR, CONFIG_FILE, APP_CONFIG_FILE,
     KEYBOARD_HELP_TEXT, FINGER_NAMES, SERVO_PAIRS,
-    load_app_config, default_serial_port, ensure_data_dir,
+    load_app_config, default_serial_port, detect_serial_ports, ensure_data_dir,
     load_config, save_config, load_pose_definitions, validate_name,
     clamp, angle_rad, coerce_numeric, coerce_angle_degrees, coerce_bool,
     load_to_percent, estimate_current_from_load, format_feedback_value,
@@ -802,6 +802,7 @@ class AmazingHandGUI:
         self.chart_mode = tk.StringVar(value='Multi-Servo')
         self.scope_servo_var = tk.StringVar(value='1')
         self.latest_goal_positions = [0.0] * 8
+        self.responsive_servos = set(range(1, 9))  # narrowed at connect time
         self.feedback_lock = threading.Lock()
         self.feedback_data = {
             'position': [0.0] * 8,
@@ -962,17 +963,16 @@ class AmazingHandGUI:
         
         ttk.Label(conn_row, text="Port:").pack(side='left', padx=(0,2))
         
-        # Detect available ports
-        import glob
-        import os
-        available_ports = []
-        if os.name == 'nt':  # Windows
-            available_ports = [f'COM{i}' for i in range(1, 21)]
-        else:  # Linux/Mac
-            available_ports = glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyAMA*')
-            if not available_ports:
-                available_ports = ['/dev/ttyACM0', '/dev/ttyUSB0']
-        
+        # Detect available ports (platform-adaptive: macOS /dev/cu.*, Linux
+        # /dev/tty*, Windows COM*).  Shared with the CLI via hand_logic.
+        available_ports = detect_serial_ports()
+        # Always include the resolved default so the readonly combobox can
+        # display it even when no device is currently connected.
+        if self.initial_port and self.initial_port not in available_ports:
+            available_ports = [self.initial_port] + available_ports
+        if not available_ports:
+            available_ports = [self.initial_port]
+
         self.port_var = tk.StringVar(value=self.initial_port)
         self.port_combo = ttk.Combobox(
             conn_row, textvariable=self.port_var, values=available_ports, width=12, state='readonly'
@@ -1907,10 +1907,22 @@ class AmazingHandGUI:
                 timeout=0.5
             )
             
-            # Enable torque for all servos
+            # Enable torque for all servos.  Tolerate servos that don't respond
+            # (e.g. a finger pair physically disconnected) so the rest still work.
+            responsive = []
             for servo_id in range(1, 9):
-                self.controller.write_torque_enable(servo_id, 1)
-            
+                try:
+                    self.controller.write_torque_enable(servo_id, 1)
+                    responsive.append(servo_id)
+                except Exception as exc:
+                    self.log(f"  Servo {servo_id} not responding ({exc}); skipping")
+            if not responsive:
+                raise RuntimeError("No servos responded")
+            self.responsive_servos = set(responsive)
+            if len(responsive) < 8:
+                missing = [s for s in range(1, 9) if s not in responsive]
+                self.log(f"Connected with servos {responsive}; missing {missing}")
+
             self.connected = True
             self.connect_btn.state(['disabled'])
             self.disconnect_btn.state(['!disabled'])
@@ -2432,16 +2444,26 @@ class AmazingHandGUI:
                     if idx < len(self.feedback_data['goal']):
                         self.feedback_data['goal'][idx] = value
             
+            # Only command servos that responded at connect time; a per-servo
+            # write to a disconnected servo raises a timeout that would abort
+            # the whole update and stop every finger from moving.
+            live = getattr(self, 'responsive_servos', None) or set(range(1, 9))
+
             # Set speeds
             for servo_id, speed in zip(servo_ids, speeds):
-                self.controller.write_goal_speed(servo_id, speed)
-            
-            # Convert positions and send
+                if servo_id in live:
+                    self.controller.write_goal_speed(servo_id, speed)
+
+            # Convert positions and send (live servos only)
+            send_ids = []
             positions_rad = []
             for servo_id, pos in zip(servo_ids, positions):
-                positions_rad.append(angle_rad(servo_id, pos))
-            
-            self.controller.sync_write_goal_position(servo_ids, positions_rad)
+                if servo_id in live:
+                    send_ids.append(servo_id)
+                    positions_rad.append(angle_rad(servo_id, pos))
+
+            if send_ids:
+                self.controller.sync_write_goal_position(send_ids, positions_rad)
             
             self.status_var.set(f"Updated: {' '.join(str(p) for p in positions)}")
 

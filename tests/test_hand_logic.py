@@ -177,7 +177,8 @@ class TestDefaultSerialPort:
     """AC 1.3: Default matches platform-specific value."""
 
     def test_linux(self, logic_paths):
-        with patch.object(os, 'name', 'posix'):
+        with patch.object(os, 'name', 'posix'), \
+                patch.object(hand_logic.sys, 'platform', 'linux'):
             port = hand_logic.default_serial_port()
         assert port == '/dev/ttyACM0'
 
@@ -185,6 +186,49 @@ class TestDefaultSerialPort:
         with patch.object(os, 'name', 'nt'):
             port = hand_logic.default_serial_port()
         assert port == 'COM9'
+
+    def test_macos_detects_cu_port(self, logic_paths):
+        """AC: On macOS, default is an auto-detected /dev/cu.* port, not ttyACM0."""
+        with patch.object(os, 'name', 'posix'), \
+                patch.object(hand_logic.sys, 'platform', 'darwin'), \
+                patch.object(hand_logic, 'detect_serial_ports',
+                             return_value=['/dev/cu.usbmodem1234']):
+            port = hand_logic.default_serial_port()
+        assert port == '/dev/cu.usbmodem1234'
+
+    def test_macos_no_device_falls_back_to_cu_hint(self, logic_paths):
+        """When no device is present, macOS falls back to a cu.* hint, never ttyACM0."""
+        with patch.object(os, 'name', 'posix'), \
+                patch.object(hand_logic.sys, 'platform', 'darwin'), \
+                patch.object(hand_logic, 'detect_serial_ports', return_value=[]):
+            port = hand_logic.default_serial_port()
+        assert port.startswith('/dev/cu.')
+
+
+class TestDetectSerialPorts:
+    """detect_serial_ports() returns platform-appropriate candidates."""
+
+    def test_macos_globs_cu_devices(self):
+        fake = {
+            '/dev/cu.usbmodem*': ['/dev/cu.usbmodem5A7C1'],
+            '/dev/cu.usbserial*': [],
+            '/dev/cu.wchusbserial*': [],
+            '/dev/cu.SLAB_USBtoUART*': [],
+        }
+        with patch.object(os, 'name', 'posix'), \
+                patch.object(hand_logic.sys, 'platform', 'darwin'), \
+                patch.object(hand_logic.glob, 'glob',
+                             side_effect=lambda p: fake.get(p, [])):
+            ports = hand_logic.detect_serial_ports()
+        assert ports == ['/dev/cu.usbmodem5A7C1']
+
+    def test_linux_globs_tty_devices(self):
+        with patch.object(os, 'name', 'posix'), \
+                patch.object(hand_logic.sys, 'platform', 'linux'), \
+                patch.object(hand_logic.glob, 'glob',
+                             side_effect=lambda p: ['/dev/ttyACM0'] if 'ttyACM' in p else []):
+            ports = hand_logic.detect_serial_ports()
+        assert ports == ['/dev/ttyACM0']
 
 
 # ===================================================================

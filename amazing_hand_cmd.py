@@ -48,6 +48,7 @@ except ImportError:
 from hand_logic import (
     CONFIG_FILE, FINGER_NAMES, SERVO_PAIRS,
     DEFAULT_PORT_LINUX, DEFAULT_PORT_WINDOWS, DEFAULT_BAUDRATE,
+    default_serial_port,
     angle_rad, coerce_bool,
 )
 
@@ -88,10 +89,24 @@ def connect(port: str, baudrate: int) -> Scs0009PyController:
         print(f"ERROR: Could not open port {port}: {exc}")
         sys.exit(1)
 
+    # Enable torque per servo, tolerating any that don't respond (e.g. a
+    # finger pair physically disconnected) so the rest remain usable.
+    responsive = []
     for servo_id in range(1, 9):
-        ctrl.write_torque_enable(servo_id, 1)
+        try:
+            ctrl.write_torque_enable(servo_id, 1)
+            responsive.append(servo_id)
+        except Exception as exc:
+            print(f"  WARNING: servo {servo_id} not responding ({exc}); skipping")
 
-    print("Connected.")
+    if not responsive:
+        print("ERROR: no servos responded on the bus")
+        sys.exit(1)
+    if len(responsive) < 8:
+        missing = [s for s in range(1, 9) if s not in responsive]
+        print(f"Connected (servos {responsive}; missing {missing}).")
+    else:
+        print("Connected.")
     return ctrl
 
 
@@ -113,8 +128,14 @@ def apply_pose(ctrl: Scs0009PyController, positions: list[int], speeds: list[int
         spd1 = speeds[finger_idx * 2]
         spd2 = speeds[finger_idx * 2 + 1]
 
-        ctrl.write_goal_speed(s1, spd1)
-        ctrl.write_goal_speed(s2, spd2)
+        # Per-servo speed writes can time out on a disconnected servo; skip
+        # those so the rest still get commanded (sync_write below tolerates
+        # missing servos on the bus).
+        for sid, spd in ((s1, spd1), (s2, spd2)):
+            try:
+                ctrl.write_goal_speed(sid, spd)
+            except Exception as exc:
+                print(f"  WARNING: servo {sid} speed write failed ({exc}); skipping")
 
         servo_ids.append(s1)
         servo_ids.append(s2)
@@ -346,9 +367,10 @@ def _interruptible_sleep(seconds: float, stop_flag: list) -> None:
 # ---------------------------------------------------------------------------
 
 def _default_port() -> str:
-    if sys.platform.startswith("win"):
-        return DEFAULT_PORT_WINDOWS
-    return DEFAULT_PORT_LINUX
+    # Delegate to the shared platform-adaptive resolver so the CLI default
+    # matches the GUI: Windows COM*, Linux /dev/tty*, macOS auto-detected
+    # /dev/cu.* (falling back to the port_mac hint when nothing is connected).
+    return default_serial_port()
 
 
 def main() -> None:
