@@ -29,8 +29,6 @@ from amazing_hand_cmd import (
     connect,
     load_config,
     apply_pose,
-    parse_step,
-    wait_for_motion,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -43,7 +41,7 @@ ACTION_MAP = {
     "A": ("pose", "open"),       # 四指张开
     "B": ("pose", "ok"),         # 抓取 (pinch)
     "C": ("pose", "close"),      # 握拳 (fist)
-    "D": ("sequence", "demo"),   # 演示序列
+    "D": ("pose", "victory"),    # ✌️ victory
 }
 
 
@@ -66,19 +64,12 @@ class HandService:
         self.gesture = None          # last activated button id (A/B/C/D)
         self.speed_pct = 50
 
-        # Sequence worker
-        self._seq_thread = None
-        self._seq_stop = threading.Event()
-        self.seq_running = False
-        self.seq_name = None
-
         self.config = load_config(self.config_path)
 
     # --- connection -------------------------------------------------------
 
     def try_connect(self) -> bool:
         """(Re)open the serial connection. Never raises; records error instead."""
-        self.stop_sequence()
         with self.lock:
             self.error = None
             try:
@@ -104,8 +95,6 @@ class HandService:
             "port": self.serial_port,
             "gesture": self.gesture,
             "speed_pct": self.speed_pct,
-            "seq_running": self.seq_running,
-            "seq_name": self.seq_name,
             "error": self.error,
         }
 
@@ -126,84 +115,6 @@ class HandService:
                 return {"ok": False, "error": str(exc)}
         return {"ok": True}
 
-    # --- sequences --------------------------------------------------------
-
-    def toggle_sequence(self, name: str, speed: int) -> dict:
-        """Start the named sequence if idle, else stop it. Returns new state."""
-        if self.seq_running:
-            self.stop_sequence()
-            return {"ok": True, "seq_running": False}
-        return self.start_sequence(name, speed)
-
-    def start_sequence(self, name: str, speed: int) -> dict:
-        sequences = self.config.get("sequences", {})
-        if name not in sequences:
-            return {"ok": False, "error": f"Sequence '{name}' not found"}
-        if self.controller is None:
-            return {"ok": False, "error": "Not connected"}
-
-        self.stop_sequence()
-        steps = sequences[name].get("steps", [])
-        self._seq_stop.clear()
-        self.seq_running = True
-        self.seq_name = name
-        self._seq_thread = threading.Thread(
-            target=self._run_sequence, args=(steps, speed), daemon=True
-        )
-        self._seq_thread.start()
-        return {"ok": True, "seq_running": True}
-
-    def stop_sequence(self) -> None:
-        self._seq_stop.set()
-        thread = self._seq_thread
-        if (thread is not None and thread.is_alive()
-                and thread is not threading.current_thread()):
-            thread.join(timeout=5.0)
-        self._seq_thread = None
-        self.seq_running = False
-        self.seq_name = None
-
-    def _run_sequence(self, steps, speed) -> None:
-        """Worker: play sequence steps once, honoring the stop event."""
-        poses = self.config.get("poses", {})
-        try:
-            for step in steps:
-                if self._seq_stop.is_set():
-                    break
-                parsed = parse_step(step)
-                if parsed is None:
-                    continue
-                if parsed[0] == "sleep":
-                    self._seq_stop.wait(parsed[1])
-                    continue
-                # ("pose", name, speeds, delay)
-                _, pose_name, speeds, delay = parsed
-                if speeds == [3] * 8:        # no per-step speeds → use knob speed
-                    speeds = [speed] * 8
-                if pose_name not in poses:
-                    continue
-                positions = poses[pose_name].get("positions", [0] * 8)
-                with self.lock:
-                    if self.controller is None:
-                        break
-                    try:
-                        apply_pose(self.controller, positions, speeds)
-                    except Exception as exc:  # noqa: BLE001
-                        self.error = str(exc)
-                        break
-                if delay is not None:
-                    self._seq_stop.wait(delay)
-                else:
-                    with self.lock:
-                        if self.controller is not None:
-                            try:
-                                wait_for_motion(self.controller)
-                            except Exception:  # noqa: BLE001
-                                pass
-        finally:
-            self.seq_running = False
-            self.seq_name = None
-
     # --- dispatch ---------------------------------------------------------
 
     def run_action(self, button_id: str, speed_pct: int) -> dict:
@@ -215,12 +126,8 @@ class HandService:
             pass
         self.gesture = button_id
         speed = speed_from_pct(self.speed_pct)
-        kind, name = ACTION_MAP[button_id]
-        if kind == "pose":
-            self.stop_sequence()       # a pose interrupts a running sequence
-            result = self.do_pose(name, speed)
-        else:
-            result = self.toggle_sequence(name, speed)
+        _, name = ACTION_MAP[button_id]
+        result = self.do_pose(name, speed)
         result.setdefault("ok", True)
         return result
 
@@ -288,9 +195,6 @@ class PanelHandler(BaseHTTPRequestHandler):
             )
             result["status"] = self.service.status()
             self._send_json(result, status=200 if result.get("ok") else 400)
-        elif self.path == "/api/stop":
-            self.service.stop_sequence()
-            self._send_json({"ok": True, "status": self.service.status()})
         elif self.path == "/api/reconnect":
             ok = self.service.try_connect()
             self._send_json({"ok": ok, "status": self.service.status()})
@@ -328,7 +232,6 @@ def main() -> None:
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nShutting down …")
-        service.stop_sequence()
         httpd.shutdown()
 
 
