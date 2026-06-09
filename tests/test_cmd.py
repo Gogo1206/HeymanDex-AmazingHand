@@ -195,9 +195,11 @@ class TestApplyPose:
     def ctrl(self):
         return MagicMock()
 
-    def test_write_goal_speed_called_for_all_8_servos(self, ctrl):
+    def test_sync_write_goal_speed_called_once_with_all_8(self, ctrl):
         cmd.apply_pose(ctrl, [0] * 8, [3] * 8)
-        assert ctrl.write_goal_speed.call_count == 8
+        ctrl.sync_write_goal_speed.assert_called_once()
+        ids, _ = ctrl.sync_write_goal_speed.call_args[0]
+        assert sorted(ids) == list(range(1, 9))
 
     def test_sync_write_goal_position_called_once(self, ctrl):
         cmd.apply_pose(ctrl, [0] * 8, [3] * 8)
@@ -230,8 +232,8 @@ class TestApplyPose:
         # speeds[4]→servo1, speeds[5]→servo2, speeds[6]→servo7, speeds[7]→servo8
         speeds = [1, 2, 3, 4, 5, 6, 1, 2]
         cmd.apply_pose(ctrl, [0] * 8, speeds)
-        speed_calls = [c.args for c in ctrl.write_goal_speed.call_args_list]
-        servo_to_speed = {servo_id: spd for servo_id, spd in speed_calls}
+        ids, spds = ctrl.sync_write_goal_speed.call_args[0]
+        servo_to_speed = dict(zip(ids, spds))
         assert servo_to_speed[5] == 1   # speeds[0]
         assert servo_to_speed[6] == 2   # speeds[1]
         assert servo_to_speed[3] == 3   # speeds[2]

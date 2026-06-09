@@ -310,6 +310,7 @@ class HandController(QMainWindow):
         self._connected = False
         self._sig = _Signals()
         self._buttons = {}
+        self._config = load_config(CONFIG_FILE)   # parsed once, reused per press
 
         self._build()
         self._sig.log.connect(self._append_log)
@@ -563,8 +564,7 @@ class HandController(QMainWindow):
 
         def _run():
             try:
-                cfg = load_config(CONFIG_FILE)
-                positions = cfg["poses"][pose]["positions"]
+                positions = self._config["poses"][pose]["positions"]
                 with self._lock:
                     if self._ctrl is not None:
                         apply_pose(self._ctrl, positions, [speed] * 8)

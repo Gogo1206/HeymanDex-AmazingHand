@@ -120,6 +120,7 @@ def apply_pose(ctrl: Scs0009PyController, positions: list[int], speeds: list[int
     speeds    : list of 8 ints  – speed value (1-6) per servo
     """
     servo_ids = []
+    speeds_ordered = []
     positions_rad = []
 
     for finger_idx, (s1, s2) in enumerate(SERVO_PAIRS):
@@ -128,20 +129,17 @@ def apply_pose(ctrl: Scs0009PyController, positions: list[int], speeds: list[int
         spd1 = speeds[finger_idx * 2]
         spd2 = speeds[finger_idx * 2 + 1]
 
-        # Per-servo speed writes can time out on a disconnected servo; skip
-        # those so the rest still get commanded (sync_write below tolerates
-        # missing servos on the bus).
-        for sid, spd in ((s1, spd1), (s2, spd2)):
-            try:
-                ctrl.write_goal_speed(sid, spd)
-            except Exception as exc:
-                print(f"  WARNING: servo {sid} speed write failed ({exc}); skipping")
-
         servo_ids.append(s1)
         servo_ids.append(s2)
+        speeds_ordered.append(spd1)
+        speeds_ordered.append(spd2)
         positions_rad.append(angle_rad(s1, pos1))
         positions_rad.append(angle_rad(s2, pos2))
 
+    # Broadcast speed + position. Both sync writes are unacked and tolerate
+    # missing servos on the bus, so a disconnected finger pair no longer stalls
+    # each command waiting for the per-servo serial timeout (~0.5s each).
+    ctrl.sync_write_goal_speed(servo_ids, speeds_ordered)
     ctrl.sync_write_goal_position(servo_ids, positions_rad)
 
 
