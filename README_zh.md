@@ -1,8 +1,6 @@
-## AmazingHand Python 工具集
+## HeymanDex AmazingHand 工具箱
 
-通过串行总线控制器（如 Waveshare USB 适配器）控制 AmazingHand 机械手的 Python GUI 和命令行工具，使用 Feetech SCS0009 舵机。
-
-本项目为 [Pollen Robotics 的 AmazingHand](https://github.com/pollen-robotics/AmazingHand) 设计。
+基于 [Pollen Robotics 开源的 AmazingHand](https://github.com/pollen-robotics/AmazingHand) 机械手的多模态控制工具箱，扩展了原有功能。在 Feetech SCS0009 舵机总线之上，通过统一的共享逻辑层，提供语音控制（离线中文语音识别）、摄像头手势识别、Web 控制面板、Qt 原生面板和命令行界面。
 
 ### 项目结构
 

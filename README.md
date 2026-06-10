@@ -1,8 +1,6 @@
-## AmazingHand Python Tools
+## HeymanDex AmazingHand Toolbox
 
-Python GUI and command-line tools to control the AmazingHand robot using Feetech SCS0009 servos via a serial bus controller (e.g. Waveshare USB adapter).
-
-This project is designed for the [AmazingHand](https://github.com/pollen-robotics/AmazingHand) by Pollen Robotics.
+Multimodal control toolbox extending the [AmazingHand](https://github.com/pollen-robotics/AmazingHand) open-source robot hand by Pollen Robotics. Adds voice control (offline Chinese STT), camera gesture recognition, web panel, Qt native panel, and CLI on top of the Feetech SCS0009 servo bus — all through a shared logic layer.
 
 ### Project Structure
 

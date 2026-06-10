@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "amazing-hand-gui"
 version = "0.8.0"
-description = "GUI and CLI tools for controlling the AmazingHand robot via Feetech SCS0009 servos"
+description = "Multimodal control toolbox extending the Pollen Robotics AmazingHand — voice, camera, GUI, CLI, web, Qt"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
