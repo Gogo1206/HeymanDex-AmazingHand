@@ -48,8 +48,29 @@ POSE_VOCAB: dict[str, list[str]] = {
 # Minimum SequenceMatcher ratio for the fuzzy fallback to accept a match.
 FUZZY_THRESHOLD = 0.6
 
-MODEL_PATH = Path(__file__).resolve().parent / "models" / "vosk-model-small-cn-0.22"
 SAMPLE_RATE = 16000
+
+# Prefer the SMALL model: it supports Vosk's grammar constraint, which is what
+# makes single-word command recognition accurate (it limits output to the
+# command words). The large model ignores grammar and, on short isolated
+# commands, mis-hears homophones — e.g. 合拢 → 黑龙, 手掌 → 首长 — scoring far
+# worse on the push-to-talk use case (32/57 vs 57/57), besides being ~12x slower
+# and ~2 GB RAM. The large model is listed only as a fallback (and may help a
+# future natural-sentence mode where grammar isn't used). Both live under
+# models/ (gitignored).
+_MODELS_DIR = Path(__file__).resolve().parent / "models"
+_MODEL_CANDIDATES = ("vosk-model-small-cn-0.22", "vosk-model-cn-0.22")
+
+
+def _find_model() -> Path:
+    for name in _MODEL_CANDIDATES:
+        path = _MODELS_DIR / name
+        if path.is_dir():
+            return path
+    return _MODELS_DIR / _MODEL_CANDIDATES[0]
+
+
+MODEL_PATH = _find_model()
 
 # Drop .wav recordings here to test recognition without a live mic. Name each
 # file after the pose it should trigger (e.g. open_1.wav, close_loud.wav) so the
