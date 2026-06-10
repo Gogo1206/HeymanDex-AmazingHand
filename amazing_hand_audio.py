@@ -138,10 +138,8 @@ class VoiceListener:
 
     def stop_and_recognize(self) -> str:
         """Stop recording and return the recognized text (possibly empty)."""
-        from vosk import KaldiRecognizer
-
         self.recording = False
-        rec = KaldiRecognizer(self._model, SAMPLE_RATE)
+        rec = _make_recognizer(self._model)
         while not self._frames.empty():
             rec.AcceptWaveform(self._frames.get_nowait())
         result = json.loads(rec.FinalResult())
@@ -152,30 +150,22 @@ class VoiceListener:
         self._stream.close()
 
 
-def _read_wav_16k_mono(path: Path) -> bytes:
-    """Read a 16-bit PCM WAV and return int16 bytes as 16 kHz mono.
+AUDIO_EXTS = (".wav", ".mp3", ".flac", ".ogg", ".opus")
 
-    Stereo is downmixed; any sample rate is linearly resampled to SAMPLE_RATE,
-    so recordings don't have to be pre-converted. Raises ValueError on non
-    16-bit-PCM input (which Vosk can't consume).
+
+def _read_audio_16k_mono(path: Path) -> bytes:
+    """Read an audio file as 16 kHz mono int16 bytes for Vosk.
+
+    Uses libsndfile (via soundfile), so any format it supports — WAV, MP3,
+    FLAC, OGG/Opus — works without ffmpeg. Stereo is downmixed and any sample
+    rate is linearly resampled to SAMPLE_RATE, so recordings need no
+    pre-conversion.
     """
-    import wave
-
     import numpy as np
+    import soundfile as sf
 
-    with wave.open(str(path), "rb") as wf:
-        if wf.getsampwidth() != 2:
-            raise ValueError(
-                f"{path.name}: need 16-bit PCM WAV "
-                f"(got sample width {wf.getsampwidth() * 8}-bit)"
-            )
-        channels = wf.getnchannels()
-        rate = wf.getframerate()
-        raw = wf.readframes(wf.getnframes())
-
-    audio = np.frombuffer(raw, dtype=np.int16)
-    if channels > 1:
-        audio = audio.reshape(-1, channels).mean(axis=1).astype(np.int16)
+    audio2d, rate = sf.read(str(path), dtype="int16", always_2d=True)
+    audio = audio2d.mean(axis=1).astype(np.int16)  # downmix to mono
     if rate != SAMPLE_RATE:
         n_out = int(round(len(audio) * SAMPLE_RATE / rate))
         x_old = np.linspace(0.0, 1.0, num=len(audio), endpoint=False)
@@ -184,20 +174,48 @@ def _read_wav_16k_mono(path: Path) -> bytes:
     return audio.tobytes()
 
 
+def _command_grammar() -> str:
+    """Vosk recognition grammar limiting output to the command words.
+
+    Constraining the recognizer to the known Chinese command words (plus
+    ``[unk]`` for anything else) sharply improves accuracy on short fixed
+    commands — e.g. it stops the small model hearing 握拳 ("close") as the
+    homophone 没钱. ASCII keywords are skipped: the Chinese model's lexicon has
+    no English, so they'd be rejected anyway.
+    """
+    words = [k for kws in POSE_VOCAB.values() for k in kws if not k.isascii()]
+    uniq = list(dict.fromkeys(words))  # dedupe, keep order
+    return json.dumps([" ".join(uniq), "[unk]"], ensure_ascii=False)
+
+
+def _make_recognizer(model):
+    """Build a grammar-constrained KaldiRecognizer, falling back to plain.
+
+    Some models don't support grammar; if construction fails we degrade to an
+    unconstrained recognizer rather than crash.
+    """
+    from vosk import KaldiRecognizer
+
+    try:
+        return KaldiRecognizer(model, SAMPLE_RATE, _command_grammar())
+    except Exception:  # noqa: BLE001 — fall back to unconstrained recognition
+        return KaldiRecognizer(model, SAMPLE_RATE)
+
+
 def recognize_file(path, model=None) -> str:
-    """Recognize a WAV file offline with Vosk and return the text.
+    """Recognize an audio file offline with Vosk and return the text.
 
     ``model`` lets a caller reuse one loaded Vosk Model across many files (it is
     expensive to construct). When omitted, the model at MODEL_PATH is loaded.
     """
-    from vosk import KaldiRecognizer, Model
+    from vosk import Model
 
     if model is None:
         if not MODEL_PATH.is_dir():
             raise FileNotFoundError(f"Vosk model not found at {MODEL_PATH}")
         model = Model(str(MODEL_PATH))
-    rec = KaldiRecognizer(model, SAMPLE_RATE)
-    rec.AcceptWaveform(_read_wav_16k_mono(Path(path)))
+    rec = _make_recognizer(model)
+    rec.AcceptWaveform(_read_audio_16k_mono(Path(path)))
     return json.loads(rec.FinalResult()).get("text", "")
 
 
@@ -216,9 +234,12 @@ def _audio_mode(path: Path) -> None:
         print(f"ERROR: no such file or directory: {path}")
         sys.exit(1)
 
-    files = sorted(path.glob("*.wav")) if path.is_dir() else [path]
+    if path.is_dir():
+        files = sorted(p for p in path.iterdir() if p.suffix.lower() in AUDIO_EXTS)
+    else:
+        files = [path]
     if not files:
-        print(f"No .wav files found in {path}")
+        print(f"No audio files ({', '.join(AUDIO_EXTS)}) found in {path}")
         return
 
     model = Model(str(MODEL_PATH))

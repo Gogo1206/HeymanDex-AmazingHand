@@ -1,5 +1,10 @@
-# Audio recordings are local test fixtures — don't commit the (large) wavs,
+# Audio recordings are local test fixtures — don't commit the (large) audio,
 # but keep this folder + its README in the repo.
 *.wav
+*.mp3
+*.flac
+*.ogg
+*.opus
+*.m4a
 !.gitignore
 !README.md
