@@ -243,6 +243,17 @@ class TestApplyPose:
         assert servo_to_speed[7] == 1   # speeds[6]
         assert servo_to_speed[8] == 2   # speeds[7]
 
+    def test_left_hand_servo_pairs_address_11_to_18(self, ctrl):
+        from hand_logic import SERVO_PAIRS_LEFT
+        cmd.apply_pose(ctrl, [0] * 8, [3] * 8, servo_pairs=SERVO_PAIRS_LEFT)
+        ids, _ = ctrl.sync_write_goal_position.call_args[0]
+        assert sorted(ids) == list(range(11, 19))
+
+    def test_default_servo_pairs_still_right_hand(self, ctrl):
+        cmd.apply_pose(ctrl, [0] * 8, [3] * 8)
+        ids, _ = ctrl.sync_write_goal_position.call_args[0]
+        assert sorted(ids) == list(range(1, 9))
+
 
 # ---------------------------------------------------------------------------
 # _interruptible_sleep (FR-SEQ-2 AC 2.4)

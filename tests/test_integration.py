@@ -70,7 +70,10 @@ class TestCmdPose:
 
     def test_speeds_sent_to_all_8_servos(self, ctrl):
         cmd.cmd_pose(ctrl, SAMPLE_CONFIG, "open")
-        assert ctrl.write_goal_speed.call_count == 8
+        # apply_pose broadcasts one sync_write with all 8 speeds (delay fix)
+        ctrl.sync_write_goal_speed.assert_called_once()
+        ids, speeds = ctrl.sync_write_goal_speed.call_args[0]
+        assert len(ids) == 8 and len(speeds) == 8
 
     def test_unknown_pose_exits_nonzero(self, ctrl):
         with pytest.raises(SystemExit):
@@ -126,8 +129,8 @@ class TestCmdSequence:
 
     def test_mixed_speeds_forwarded_to_controller(self, ctrl):
         cmd.cmd_sequence(ctrl, SAMPLE_CONFIG, "mixed_speeds", loop=False)
-        # 2 pose steps × 8 servos = 16 write_goal_speed calls
-        assert ctrl.write_goal_speed.call_count == 16
+        # 2 pose steps → 2 sync_write_goal_speed broadcasts (delay fix)
+        assert ctrl.sync_write_goal_speed.call_count == 2
 
     def test_empty_sequence_exits_nonzero(self, ctrl):
         config = {

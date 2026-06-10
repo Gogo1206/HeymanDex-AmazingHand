@@ -76,8 +76,16 @@ def load_config(config_path: Path) -> dict:
 # Hardware helpers
 # ---------------------------------------------------------------------------
 
-def connect(port: str, baudrate: int) -> Scs0009PyController:
-    """Open serial connection and enable torque on all 8 servos."""
+def connect(port: str, baudrate: int, servo_ids=None) -> Scs0009PyController:
+    """Open serial connection and enable torque on the given servos.
+
+    ``servo_ids`` defaults to the right hand (1-8). Pass a wider set (e.g.
+    ``list(range(1, 9)) + list(range(11, 19))``) to also enable the left hand
+    on a shared bus. Servos that don't respond are skipped, not fatal, so a
+    physically absent hand or finger pair leaves the rest usable.
+    """
+    if servo_ids is None:
+        servo_ids = list(range(1, 9))
     print(f"Connecting to {port} at {baudrate} baud …")
     try:
         ctrl = Scs0009PyController(
@@ -92,7 +100,7 @@ def connect(port: str, baudrate: int) -> Scs0009PyController:
     # Enable torque per servo, tolerating any that don't respond (e.g. a
     # finger pair physically disconnected) so the rest remain usable.
     responsive = []
-    for servo_id in range(1, 9):
+    for servo_id in servo_ids:
         try:
             ctrl.write_torque_enable(servo_id, 1)
             responsive.append(servo_id)
@@ -102,28 +110,32 @@ def connect(port: str, baudrate: int) -> Scs0009PyController:
     if not responsive:
         print("ERROR: no servos responded on the bus")
         sys.exit(1)
-    if len(responsive) < 8:
-        missing = [s for s in range(1, 9) if s not in responsive]
+    if len(responsive) < len(servo_ids):
+        missing = [s for s in servo_ids if s not in responsive]
         print(f"Connected (servos {responsive}; missing {missing}).")
     else:
         print("Connected.")
     return ctrl
 
 
-def apply_pose(ctrl: Scs0009PyController, positions: list[int], speeds: list[int]) -> None:
+def apply_pose(ctrl: Scs0009PyController, positions: list[int], speeds: list[int],
+               servo_pairs: list[tuple[int, int]] = SERVO_PAIRS) -> None:
     """
-    Send speed + position commands to all 8 servos.
+    Send speed + position commands to one hand's 8 servos.
 
     Parameters
     ----------
     positions : list of 8 ints  – degrees for each servo (index 0→servo1 … 7→servo8)
     speeds    : list of 8 ints  – speed value (1-6) per servo
+    servo_pairs : list of 4 (id1, id2) tuples – which physical servo IDs to drive.
+                  Defaults to the right hand (IDs 1-8); pass SERVO_PAIRS_LEFT for
+                  the left hand (IDs 11-18) on a shared bus.
     """
     servo_ids = []
     speeds_ordered = []
     positions_rad = []
 
-    for finger_idx, (s1, s2) in enumerate(SERVO_PAIRS):
+    for finger_idx, (s1, s2) in enumerate(servo_pairs):
         pos1 = positions[finger_idx * 2]
         pos2 = positions[finger_idx * 2 + 1]
         spd1 = speeds[finger_idx * 2]

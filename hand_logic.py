@@ -40,7 +40,15 @@ APP_CONFIG_FILE = DATA_DIR / "config.yaml"     # Application settings
 
 # Servo IDs per finger (matches GUI build order: Ring, Middle, Pointer, Thumb)
 FINGER_NAMES = ["Ring", "Middle", "Pointer", "Thumb"]
-SERVO_PAIRS = [(5, 6), (3, 4), (1, 2), (7, 8)]  # (servo1_id, servo2_id)
+SERVO_PAIRS_RIGHT = [(5, 6), (3, 4), (1, 2), (7, 8)]  # right hand: IDs 1-8
+# Left hand shares the same serial bus, so its servos are renumbered to 11-18
+# (right IDs + 10). The +10 offset preserves odd/even parity, so angle_rad()'s
+# even-servo inversion still applies correctly to the left hand.
+LEFT_ID_OFFSET = 10
+SERVO_PAIRS_LEFT = [(s1 + LEFT_ID_OFFSET, s2 + LEFT_ID_OFFSET)
+                    for s1, s2 in SERVO_PAIRS_RIGHT]  # left hand: IDs 11-18
+# Backward-compatible alias: existing CLI/GUI/web callers default to the right hand.
+SERVO_PAIRS = SERVO_PAIRS_RIGHT
 
 DEFAULT_PORT_LINUX = "/dev/ttyACM0"
 DEFAULT_PORT_WINDOWS = "COM9"
