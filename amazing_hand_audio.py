@@ -32,11 +32,17 @@ from amazing_hand_cmd import connect, load_config, apply_pose
 
 # pose name → spoken keywords (primary first, then synonyms). Keys must match
 # pose names in data/hand_config.yaml: open / close / ok / victory.
+#
+# All words are Chinese and verified to exist in the vosk-model-small-cn-0.22
+# lexicon (English and out-of-lexicon words were removed — the model can't hear
+# them). Words are clear multi-syllable terms; single characters are avoided so
+# they don't substring-match unrelated speech, and no word is shared between
+# two poses (which would make it ambiguous).
 POSE_VOCAB: dict[str, list[str]] = {
-    "open":    ["张开", "打开", "张手", "摊开", "open"],
-    "close":   ["握拳", "握", "攥", "拳", "抓紧", "close"],
-    "ok":      ["抓取", "捏", "ok", "好的"],
-    "victory": ["胜利", "胜利手势", "剪刀", "耶", "victory"],
+    "open":    ["张开", "打开", "摊开", "展开", "伸开", "五指", "手掌"],
+    "close":   ["握拳", "握紧", "抓紧", "拳头", "合拢"],
+    "ok":      ["好的", "抓取", "可以", "拿取"],
+    "victory": ["胜利", "剪刀", "剪刀手", "两个", "耶"],
 }
 
 # Minimum SequenceMatcher ratio for the fuzzy fallback to accept a match.

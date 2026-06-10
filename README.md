@@ -275,20 +275,24 @@ Torque is automatically disabled on all servos when the script exits (including 
 
 Hold **SPACE**, speak a command, release — the hand moves. Offline (Vosk), no LLM.
 
-| say (Chinese)      | pose    |
-|--------------------|---------|
-| 张开 / 打开        | open    |
-| 握拳 / 抓紧        | close   |
-| 抓取 / 捏          | ok      |
-| 胜利 / 剪刀        | victory |
+| say (Chinese)        | pose    |
+|----------------------|---------|
+| 张开 / 打开 / 展开   | open    |
+| 握拳 / 握紧 / 抓紧   | close   |
+| 好的 / 抓取 / 可以   | ok      |
+| 胜利 / 剪刀 / 两个   | victory |
+
+Mandarin only (no English) — words are chosen to be clear and to exist in the
+small model's vocabulary. See `amazing_hand_audio.py` `POSE_VOCAB` for the full
+list.
 
 ```bash
 python amazing_hand_audio.py            # drive the hand
 python amazing_hand_audio.py --no-hand  # recognize only, no serial
 ```
 
-One-time setup: `pip install vosk sounddevice pynput` and download the Vosk
-small Chinese model into `models/vosk-model-small-cn-0.22/` (see
+One-time setup: `pip install vosk sounddevice pynput soundfile` and download the
+Vosk small Chinese model into `models/vosk-model-small-cn-0.22/` (see
 `docs/superpowers/plans/2026-06-10-voice-control.md`, Task 2). On macOS, grant
 the terminal Input Monitoring permission so the SPACE key is detected.
 

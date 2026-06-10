@@ -16,14 +16,16 @@ def test_primary_words_map_to_poses():
 def test_synonyms_map_to_poses():
     assert match_command("打开") == "open"
     assert match_command("抓紧") == "close"
-    assert match_command("捏") == "ok"
+    assert match_command("拿取") == "ok"
     assert match_command("剪刀") == "victory"
 
 
-def test_english_words_map_to_poses():
-    assert match_command("open") == "open"
-    assert match_command("OK") == "ok"
-    assert match_command("Victory") == "victory"
+def test_english_words_are_not_matched():
+    # English was removed from the vocab: the Chinese Vosk model can't hear it,
+    # so the matcher must not claim a pose for English text.
+    assert match_command("open") is None
+    assert match_command("ok") is None
+    assert match_command("victory") is None
 
 
 def test_keyword_inside_a_sentence():
