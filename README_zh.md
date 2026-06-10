@@ -1,4 +1,4 @@
-## HeymanDex AmazingHand 工具箱
+## 黑漫科技 AmazingHand 工具箱
 
 [English](README.md)
 
