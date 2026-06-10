@@ -39,10 +39,10 @@ from amazing_hand_cmd import connect, load_config, apply_pose
 # they don't substring-match unrelated speech, and no word is shared between
 # two poses (which would make it ambiguous).
 POSE_VOCAB: dict[str, list[str]] = {
-    "open":    ["张开", "打开", "摊开", "展开", "伸开", "五指", "手掌"],
+    "open":    ["张开", "打开", "摊开", "展开", "伸开", "手掌"],
     "close":   ["握拳", "握紧", "抓紧", "拳头", "合拢"],
     "ok":      ["好的", "抓取", "可以", "拿取"],
-    "victory": ["胜利", "剪刀", "剪刀手", "两个"],
+    "victory": ["胜利", "剪刀", "剪刀手", "两个", "耶"],
 }
 
 # Minimum SequenceMatcher ratio for the fuzzy fallback to accept a match.
