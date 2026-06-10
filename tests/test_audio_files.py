@@ -28,11 +28,17 @@ def _audio_files():
 
 def _expected_pose(stem: str) -> str | None:
     norm = stem.lower()
-    # 1. filename is the spoken command word itself (e.g. 张开, 好的, open)
+    # 1. filename is the spoken command word itself (e.g. 张开, 好的)
     for pose, keywords in POSE_VOCAB.items():
         if norm in [k.lower() for k in keywords]:
             return pose
-    # 2. filename starts with a pose name (e.g. open_1, close_loud)
+    # 2. filename starts with a command word, allowing a suffix such as a voice
+    #    or take number (e.g. 张开_tingting, 好的-2)
+    for pose, keywords in POSE_VOCAB.items():
+        for k in keywords:
+            if norm.startswith(k.lower()):
+                return pose
+    # 3. filename starts with a pose name (e.g. open_1, close_loud)
     for pose in POSE_VOCAB:
         if norm.startswith(pose):
             return pose
