@@ -17,9 +17,20 @@ dependencies = [
     "rustypot",
 ]
 
+[project.optional-dependencies]
+audio = ["vosk", "sounddevice", "pynput", "soundfile"]
+camera = ["mediapipe", "opencv-python"]
+qt = ["PyQt6"]
+web = []
+all = [
+    "vosk", "sounddevice", "pynput", "soundfile",
+    "mediapipe", "opencv-python",
+    "PyQt6",
+]
+
 [project.scripts]
-amazing-hand-gui = "amazing_hand_gui:main"
-amazing-hand-cmd = "amazing_hand_cmd:main"
+amazing-hand-gui = "amazing_hand.amazing_hand_gui:main"
+amazing-hand-cmd = "amazing_hand.amazing_hand_cmd:main"
 
 [project.urls]
 Homepage = "https://github.com/Betatester777/AmazingHandControl"
@@ -33,5 +44,5 @@ markers = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["amazing_hand*"]

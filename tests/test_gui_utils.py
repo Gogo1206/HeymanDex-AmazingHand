@@ -5,8 +5,8 @@ No hardware connection or GUI display is needed; only isolated helper
 functions are exercised.
 """
 import pytest
-import hand_logic
-import amazing_hand_gui as gui
+from amazing_hand import hand_logic
+from amazing_hand import amazing_hand_gui as gui
 
 
 # ---------------------------------------------------------------------------

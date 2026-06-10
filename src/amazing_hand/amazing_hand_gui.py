@@ -106,7 +106,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
 
-from hand_logic import (
+from amazing_hand.hand_logic import (
     APP_VERSION,
     BASE_DIR, DATA_DIR, CONFIG_FILE, APP_CONFIG_FILE,
     KEYBOARD_HELP_TEXT, FINGER_NAMES, SERVO_PAIRS,

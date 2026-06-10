@@ -7,25 +7,38 @@ This project is designed for the [AmazingHand](https://github.com/pollen-robotic
 ### Project Structure
 
 ```
-amazing_hand_gui.py   – Main GUI application
-amazing_hand_cmd.py   – Command-line interface
-hand_logic.py         – Shared business logic (no UI dependencies)
-pyproject.toml        – Package metadata, dependencies, pytest config
+src/amazing_hand/
+  __init__.py           – Package metadata
+  hand_logic.py         – Shared business logic (no UI dependencies)
+  amazing_hand_cmd.py   – Command-line interface
+  amazing_hand_gui.py   – Main GUI application
+  amazing_hand_audio.py – Voice control (PTT, offline STT)
+  amazing_hand_camera.py– Camera gesture control
+  amazing_hand_qt.py    – PyQt6 native control panel
+  amazing_hand_web.py   – Web control panel backend
+pyproject.toml          – Package metadata, dependencies, pytest config
+requirements.txt        – Full dependency list (core + optional groups)
 data/
-  config.yaml         – App settings (serial ports, limits, speeds)
-  hand_config.yaml    – Saved poses and sequences
+  config.yaml           – App settings (serial ports, limits, speeds)
+  hand_config.yaml      – Saved poses and sequences
 docs/
-  REQUIREMENTS.md     – Requirements & acceptance criteria
-  user_manual.md      – User manual
-  CONFIG_FORMAT.md    – Config file format reference
+  REQUIREMENTS.md       – Requirements & acceptance criteria
+  user_manual.md        – User manual
+  CONFIG_FORMAT.md      – Config file format reference
 tests/
-  test_hand_logic.py  – Unit tests for hand_logic (155 tests)
-  test_gui_utils.py   – Unit tests for GUI utilities (51 tests)
-  test_cmd.py         – Unit tests for CLI (42 tests)
-  test_integration.py – Integration tests (14 tests)
-  test_system.py      – System tests via subprocess (22 tests)
+  test_hand_logic.py    – Unit tests for hand_logic (155 tests)
+  test_gui_utils.py     – Unit tests for GUI utilities (51 tests)
+  test_cmd.py           – Unit tests for CLI (42 tests)
+  test_camera.py        – Unit tests for camera (12 tests)
+  test_audio.py         – Unit tests for audio matching (20 tests)
+  test_audio_files.py   – Recognition tests from recordings
+  test_web.py           – Unit tests for web panel (10 tests)
+  test_integration.py   – Integration tests (14 tests)
+  test_system.py        – System tests via subprocess (22 tests)
   test_system_hardware.py – Hardware tests (33 tests, requires --hardware)
   test_cmd_hardware.py    – CMD hardware tests (21 tests, requires --hardware)
+  fixtures/
+    audio_samples/      – Voice recordings for test_audio_files.py
 ```
 
 ### Requirements
@@ -42,7 +55,19 @@ Install with pip (recommended — uses `pyproject.toml`):
 pip install -e .
 ```
 
-Or install dependencies directly:
+After install, console scripts are available: `amazing-hand-gui`, `amazing-hand-cmd`.
+Or run directly: `python src/amazing_hand/amazing_hand_cmd.py`.
+
+Install optional features:
+
+```bash
+pip install -e ".[audio]"      # voice control
+pip install -e ".[camera]"     # gesture control
+pip install -e ".[qt]"         # Qt native panel
+pip install -e ".[all]"        # everything
+```
+
+Or install all dependencies directly:
 
 ```bash
 pip install -r requirements.txt
@@ -61,7 +86,7 @@ Both the GUI and CLI try to choose a sensible default serial port:
 - Windows: `COM9`
 - Linux/macOS: `/dev/ttyACM0`
 
-You can override this with the `--port` option, e.g. `python amazing_hand_gui.py --port /dev/ttyUSB0` (Linux) or `python amazing_hand_gui.py --port COM4` (Windows).
+You can override this with the `--port` option, e.g. `python src/amazing_hand/amazing_hand_gui.py --port /dev/ttyUSB0` (Linux) or `python src/amazing_hand/amazing_hand_gui.py --port COM4` (Windows).
 
 ---
 
@@ -77,8 +102,8 @@ amazing-hand-gui --port /dev/ttyUSB0
 Or run directly:
 
 ```bash
-python amazing_hand_gui.py
-python amazing_hand_gui.py --port /dev/ttyUSB0
+python src/amazing_hand/amazing_hand_gui.py
+python src/amazing_hand/amazing_hand_gui.py --port /dev/ttyUSB0
 ```
 
 Features:
@@ -211,47 +236,47 @@ amazing-hand-cmd --pose open --port /dev/ttyUSB0
 ##### List available poses and sequences
 
 ```bash
-python amazing_hand_cmd.py --list
+python src/amazing_hand/amazing_hand_cmd.py --list
 ```
 
 ##### Apply a single pose
 
 ```bash
-python amazing_hand_cmd.py --pose open
-python amazing_hand_cmd.py --pose close
-python amazing_hand_cmd.py --pose scissors --speed 6
+python src/amazing_hand/amazing_hand_cmd.py --pose open
+python src/amazing_hand/amazing_hand_cmd.py --pose close
+python src/amazing_hand/amazing_hand_cmd.py --pose scissors --speed 6
 ```
 
 ##### Set servo speed (1 slow … 6 fast, default 3)
 
 ```bash
-python amazing_hand_cmd.py --pose close --speed 6
-python amazing_hand_cmd.py --sequence wave --speed 4
+python src/amazing_hand/amazing_hand_cmd.py --pose close --speed 6
+python src/amazing_hand/amazing_hand_cmd.py --sequence wave --speed 4
 ```
 
 ##### Override serial port
 
 ```bash
-python amazing_hand_cmd.py --pose open --port /dev/ttyACM0
-python amazing_hand_cmd.py --pose open --port /dev/ttyUSB0
+python src/amazing_hand/amazing_hand_cmd.py --pose open --port /dev/ttyACM0
+python src/amazing_hand/amazing_hand_cmd.py --pose open --port /dev/ttyUSB0
 ```
 
 ##### Play a sequence once
 
 ```bash
-python amazing_hand_cmd.py --sequence demo
+python src/amazing_hand/amazing_hand_cmd.py --sequence demo
 ```
 
 ##### Play a sequence in a loop (Ctrl+C to stop)
 
 ```bash
-python amazing_hand_cmd.py --sequence wave --loop
+python src/amazing_hand/amazing_hand_cmd.py --sequence wave --loop
 ```
 
 ##### Use an alternative config file
 
 ```bash
-python amazing_hand_cmd.py --list --config /path/to/hand_config.yaml
+python src/amazing_hand/amazing_hand_cmd.py --list --config /path/to/hand_config.yaml
 ```
 
 #### Options
@@ -287,8 +312,8 @@ small model's vocabulary. See `amazing_hand_audio.py` `POSE_VOCAB` for the full
 list.
 
 ```bash
-python amazing_hand_audio.py            # drive the hand
-python amazing_hand_audio.py --no-hand  # recognize only, no serial
+python src/amazing_hand/amazing_hand_audio.py            # drive the hand
+python src/amazing_hand/amazing_hand_audio.py --no-hand  # recognize only, no serial
 ```
 
 One-time setup: `pip install vosk sounddevice pynput soundfile` and download the

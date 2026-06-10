@@ -45,7 +45,7 @@ except ImportError:
     print("ERROR: rustypot library not found. Install it with: pip install rustypot")
     sys.exit(1)
 
-from hand_logic import (
+from amazing_hand.hand_logic import (
     CONFIG_FILE, FINGER_NAMES, SERVO_PAIRS,
     DEFAULT_PORT_LINUX, DEFAULT_PORT_WINDOWS, DEFAULT_BAUDRATE,
     default_serial_port,

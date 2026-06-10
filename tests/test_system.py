@@ -1,5 +1,5 @@
 """
-System tests: run amazing_hand_cmd.py as a subprocess.
+System tests: run src/amazing_hand/amazing_hand_cmd.py as a subprocess.
 
 Only commands that do NOT require hardware are covered here:
   - --help  (exits 0, shows options)
@@ -18,7 +18,7 @@ import yaml
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CLI = PROJECT_ROOT / "amazing_hand_cmd.py"
+CLI = PROJECT_ROOT / "src" / "amazing_hand" / "amazing_hand_cmd.py"
 
 SAMPLE_CONFIG = {
     "poses": {

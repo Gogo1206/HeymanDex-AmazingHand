@@ -12,7 +12,7 @@ import numpy as np
 from pathlib import Path
 from unittest.mock import patch
 
-import hand_logic
+from amazing_hand import hand_logic
 
 
 # ---------------------------------------------------------------------------

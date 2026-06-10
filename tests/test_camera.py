@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from amazing_hand_camera import classify, pairs_for_handedness
-from hand_logic import SERVO_PAIRS_LEFT, SERVO_PAIRS_RIGHT
+from amazing_hand.amazing_hand_camera import classify, pairs_for_handedness
+from amazing_hand.hand_logic import SERVO_PAIRS_LEFT, SERVO_PAIRS_RIGHT
 
 # MediaPipe landmark indices used by the classifier
 WRIST, THUMB_TIP, THUMB_IP, MIDDLE_MCP = 0, 4, 3, 9

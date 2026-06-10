@@ -24,14 +24,14 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from hand_logic import CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port
-from amazing_hand_cmd import (
+from amazing_hand.hand_logic import CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port
+from amazing_hand.amazing_hand_cmd import (
     connect,
     load_config,
     apply_pose,
 )
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 WEB_DIR = BASE_DIR / "web"
 INDEX_FILE = WEB_DIR / "index.html"
 

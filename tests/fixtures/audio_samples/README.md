@@ -35,8 +35,8 @@ A name matching neither is skipped by the test (you can still run it with
 Ad-hoc — print what each file is heard as and which pose it maps to:
 
 ```bash
-python amazing_hand_audio.py --audio audio_samples/             # whole folder
-python amazing_hand_audio.py --audio audio_samples/张开.mp3      # one file
+python amazing_hand_audio.py --audio tests/fixtures/audio_samples/             # whole folder
+python amazing_hand_audio.py --audio tests/fixtures/audio_samples/张开.mp3      # one file
 ```
 
 As a regression test (auto-skips when this folder has no recordings):

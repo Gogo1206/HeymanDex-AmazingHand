@@ -27,8 +27,8 @@ import queue
 import sys
 from pathlib import Path
 
-from hand_logic import CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port
-from amazing_hand_cmd import connect, load_config, apply_pose
+from amazing_hand.hand_logic import CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port
+from amazing_hand.amazing_hand_cmd import connect, load_config, apply_pose
 
 # pose name → spoken keywords (primary first, then synonyms). Keys must match
 # pose names in data/hand_config.yaml: open / close / ok / victory.
@@ -58,7 +58,7 @@ SAMPLE_RATE = 16000
 # and ~2 GB RAM. The large model is listed only as a fallback (and may help a
 # future natural-sentence mode where grammar isn't used). Both live under
 # models/ (gitignored).
-_MODELS_DIR = Path(__file__).resolve().parent / "models"
+_MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "models"
 _MODEL_CANDIDATES = ("vosk-model-small-cn-0.22", "vosk-model-cn-0.22")
 
 
@@ -75,7 +75,7 @@ MODEL_PATH = _find_model()
 # Drop .wav recordings here to test recognition without a live mic. Name each
 # file after the pose it should trigger (e.g. open_1.wav, close_loud.wav) so the
 # test suite can check it — see tests/test_audio_files.py.
-AUDIO_SAMPLES_DIR = Path(__file__).resolve().parent / "audio_samples"
+AUDIO_SAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "audio_samples"
 
 _PUNCT = " 　,，.。!！?？、~"
 

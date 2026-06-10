@@ -27,11 +27,11 @@ from pathlib import Path
 
 import numpy as np
 
-from hand_logic import (
+from amazing_hand.hand_logic import (
     CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port,
     SERVO_PAIRS_LEFT, SERVO_PAIRS_RIGHT,
 )
-from amazing_hand_cmd import connect, load_config, apply_pose
+from amazing_hand.amazing_hand_cmd import connect, load_config, apply_pose
 
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "hand_landmarker.task"
 

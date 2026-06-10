@@ -2,7 +2,7 @@
 import pytest
 from pathlib import Path
 
-from amazing_hand_web import (
+from amazing_hand.amazing_hand_web import (
     ACTION_MAP,
     HandService,
     speed_from_pct,
@@ -41,7 +41,7 @@ class TestActionMap:
 
     def test_poses_exist_in_config(self):
         """Every mapped pose name must exist in data/hand_config.yaml."""
-        from amazing_hand_cmd import load_config
+        from amazing_hand.amazing_hand_cmd import load_config
         cfg = load_config(PROJECT_ROOT / "data" / "hand_config.yaml")
 
         for key in ("A", "B", "C", "D"):
@@ -96,6 +96,6 @@ class TestHandServiceNoHardware:
 
 class TestHandlerSmoke:
     def test_import_and_class_exists(self):
-        from amazing_hand_web import PanelHandler
+        from amazing_hand.amazing_hand_web import PanelHandler
         from http.server import BaseHTTPRequestHandler
         assert issubclass(PanelHandler, BaseHTTPRequestHandler)

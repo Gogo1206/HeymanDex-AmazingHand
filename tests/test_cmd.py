@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, call, patch
 import numpy as np
 import yaml
 
-import amazing_hand_cmd as cmd
+from amazing_hand import amazing_hand_cmd as cmd
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +244,7 @@ class TestApplyPose:
         assert servo_to_speed[8] == 2   # speeds[7]
 
     def test_left_hand_servo_pairs_address_11_to_18(self, ctrl):
-        from hand_logic import SERVO_PAIRS_LEFT
+        from amazing_hand.hand_logic import SERVO_PAIRS_LEFT
         cmd.apply_pose(ctrl, [0] * 8, [3] * 8, servo_pairs=SERVO_PAIRS_LEFT)
         ids, _ = ctrl.sync_write_goal_position.call_args[0]
         assert sorted(ids) == list(range(11, 19))

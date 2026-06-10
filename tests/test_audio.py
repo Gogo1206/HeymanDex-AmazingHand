@@ -3,7 +3,7 @@
 Mic capture, Vosk, and pynput key handling are hardware/OS dependent and are
 verified manually — only the pure match_command function is unit-tested here.
 """
-from amazing_hand_audio import match_command
+from amazing_hand.amazing_hand_audio import match_command
 
 
 def test_primary_words_map_to_poses():

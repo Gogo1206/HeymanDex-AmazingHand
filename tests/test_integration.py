@@ -11,9 +11,9 @@ from unittest.mock import MagicMock
 
 import yaml
 
-import amazing_hand_cmd as cmd
-import amazing_hand_gui as gui
-import hand_logic
+from amazing_hand import amazing_hand_cmd as cmd
+from amazing_hand import amazing_hand_gui as gui
+from amazing_hand import hand_logic
 
 
 # ---------------------------------------------------------------------------

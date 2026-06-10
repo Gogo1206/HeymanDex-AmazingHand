@@ -22,11 +22,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from hand_logic import (
+from amazing_hand.hand_logic import (
     SERVO_PAIRS, coerce_angle_degrees, coerce_bool, coerce_numeric,
 )
 
-import amazing_hand_cmd as cmd
+from amazing_hand import amazing_hand_cmd as cmd
 
 try:
     from rustypot import Scs0009PyController

@@ -29,8 +29,8 @@ from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QWidget, QFrame,
 )
 
-from hand_logic import CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port
-from amazing_hand_cmd import connect, load_config, apply_pose
+from amazing_hand.hand_logic import CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port
+from amazing_hand.amazing_hand_cmd import connect, load_config, apply_pose
 
 # ── palette (from web :root) ─────────────────────────────────────────
 TERRA_100 = "#F5E6D8"

@@ -27,7 +27,7 @@ import numpy as np
 import pytest
 import yaml
 
-from hand_logic import (
+from amazing_hand.hand_logic import (
     SERVO_PAIRS, FINGER_NAMES, angle_rad,
     coerce_numeric, coerce_bool, coerce_angle_degrees,
 )
@@ -187,7 +187,7 @@ class TestHardwareCLIConnection:
 
     def test_apply_pose_via_module(self, controller, sample_config_file):
         """AC 5.1, 5.2: apply_pose sends positions to hardware."""
-        import amazing_hand_cmd as cmd
+        from amazing_hand import amazing_hand_cmd as cmd
         config = yaml.safe_load(sample_config_file.read_text())
         cmd.cmd_pose(controller, config, "open")
 
@@ -395,14 +395,14 @@ class TestHardwareSequence:
 
     def test_sequence_demo(self, controller, sample_config_file):
         """AC 2.1: Sequence runs all pose steps."""
-        import amazing_hand_cmd as cmd
+        from amazing_hand import amazing_hand_cmd as cmd
         config = yaml.safe_load(sample_config_file.read_text())
         # Should complete without error
         cmd.cmd_sequence(controller, config, "demo", loop=False)
 
     def test_sequence_with_sleep(self, controller):
         """AC 2.2: SLEEP steps pause without hardware commands."""
-        import amazing_hand_cmd as cmd
+        from amazing_hand import amazing_hand_cmd as cmd
         config = {
             "poses": {"open": {"positions": [0] * 8}},
             "sequences": {

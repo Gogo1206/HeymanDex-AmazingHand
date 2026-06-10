@@ -33,7 +33,7 @@ import yaml
 
 APP_VERSION = "0.8"
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / "data"
 CONFIG_FILE = DATA_DIR / "hand_config.yaml"   # Poses and sequences
 APP_CONFIG_FILE = DATA_DIR / "config.yaml"     # Application settings

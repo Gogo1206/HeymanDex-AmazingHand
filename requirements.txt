@@ -1,11 +1,22 @@
-matplotlib
-numpy
+# Core dependencies (required)
+matplotlib>=3.7
+numpy>=1.24
 rustypot
-PyYAML
-PyQt6
-mediapipe
-opencv-python
+PyYAML>=6.0
+
+# Audio / voice control (optional: pip install amazing-hand-gui[audio])
 vosk
 sounddevice
 pynput
 soundfile
+
+# Camera / gesture control (optional: pip install amazing-hand-gui[camera])
+mediapipe
+opencv-python
+
+# Qt native panel (optional: pip install amazing-hand-gui[qt])
+PyQt6
+
+# Web panel (no extra deps beyond core)
+
+# Install everything: pip install amazing-hand-gui[all]

@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>RE100-上位机参考模式</title>
+    <style>
+        :root {
+            --bg-color: #FAF6F0; /* Original warm beige background */
+            --primary-color: #B87A5A; /* Original terracotta accent color */
+            --text-color: #4A4A4A;
+            --text-muted: #8E8A83;
+            --border-color: #E2DCD0;
+            --panel-bg: #FFFFFF;
+            
+            /* Button Palette - Earth/Industrial Tones Matching Original Theme */
+            --btn-conn: #7A6F5D;
+            --btn-record: #B87A5A;
+            --btn-save: #D98C64;
+            --btn-save-dark: #C47A53;
+            --btn-load: #8FA89B;
+            --btn-load-dark: #7E978A;
+            --btn-play: #C9665C;
+            --btn-clear: #8A857E;
+            --btn-hover-bg: #F1ECE4;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #E8E8E8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* macOS Window Wrapper container */
+        .window {
+            width: 1280px;
+            height: 800px;
+            background-color: var(--bg-color);
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Title Bar */
+        .titlebar {
+            height: 38px;
+            background-color: #F1ECE4;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .mac-btns {
+            display: flex;
+            gap: 8px;
+            z-index: 2;
+        }
+        .mac-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .mac-btn.close { background-color: #FF5F56; }
+        .mac-btn.minimize { background-color: #FFBD2E; }
+        .mac-btn.maximize { background-color: #27C93F; }
+        .title {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            left: 0;
+            font-size: 14px;
+            color: var(--text-color);
+            font-weight: bold;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .header-logo {
+            width: 16px;
+            height: 16px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* Main Content Layout */
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* Card Panel Layout */
+        .panel-card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .left-panel {
+            flex: 3.2;
+            min-width: 0;
+            justify-content: space-between;
+        }
+        .right-panel {
+            flex: 1.2;
+            min-width: 320px;
+        }
+
+        /* Title Area */
+        .panel-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .title-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .title-icon {
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+        }
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        .status-dot.disconnected {
+            background-color: #FF5F56;
+            box-shadow: 0 0 5px #FF5F56;
+        }
+        .status-dot.connected {
+            background-color: #27C93F;
+            box-shadow: 0 0 5px #27C93F;
+        }
+
+        /* Sliders Grid: 16 joints (scrollable) */
+        .sliders-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px 30px;
+            overflow-y: auto;
+            padding-right: 8px;
+            align-content: start;
+        }
+        .slider-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .joint-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .slider-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .slider-label-text {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .limit-input {
+            width: 40px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 4px 0;
+            font-size: 11px;
+            color: var(--text-color);
+            outline: none;
+            background-color: #ffffff;
+            transition: border-color 0.2s;
+        }
+        .limit-input:focus {
+            border-color: var(--primary-color);
+        }
+        
+        .val-input {
+            width: 45px;
+            text-align: center;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            padding: 4px 0;
+            font-size: 12px;
+            font-weight: bold;
+            background-color: #F1ECE4;
+            color: var(--primary-color);
+            outline: none;
+            transition: all 0.2s;
+        }
+        .val-input:focus {
+            box-shadow: 0 0 0 2px rgba(184, 122, 90, 0.2);
+        }
+
+        /* Custom Slider layout to align with terracotta theme */
+        .joint-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #E2DCD0;
+            outline: none;
+            cursor: pointer;
+        }
+        .joint-slider::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 3px;
+        }
+        .joint-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            border: 2px solid #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            margin-top: -3px;
+            transition: transform 0.1s;
+        }
+        .joint-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Bottom Action Buttons Row */
+        .action-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .btn {
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0 14px;
+            transition: opacity 0.2s, transform 0.1s;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-purple { background-color: var(--btn-conn); }
+        .btn-terracotta { background-color: var(--btn-record); }
+        .btn-red { background-color: var(--btn-play); }
+        .btn-gray { background-color: var(--btn-clear); }
+
+        /* Split dropdown styling */
+        .btn-split-group {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .btn-split-main {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .btn-split-arrow {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            padding: 0 8px;
+            height: 36px;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            transition: opacity 0.2s;
+        }
+        .btn-split-arrow:hover {
+            opacity: 0.9;
+        }
+        .btn-orange-main { background-color: var(--btn-save); }
+        .btn-orange-arrow { background-color: var(--btn-save-dark); }
+        .btn-sage-main { background-color: var(--btn-load); }
+        .btn-sage-arrow { background-color: var(--btn-load-dark); }
+
+        /* Right Panel: Action Sequence List */
+        .action-list-header {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .sequence-list-container {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            flex: 1;
+            border: 2px dashed var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            background-color: var(--bg-color);
+        }
+        .empty-icon {
+            color: #C0B7AD;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .empty-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .empty-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Action Item Cards */
+        .action-item-card {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .action-item-card:hover {
+            border-color: var(--primary-color);
+            background-color: var(--bg-color);
+        }
+        .action-item-card.active {
+            border-color: var(--primary-color);
+            background-color: #F1ECE4;
+            box-shadow: 0 0 0 1px var(--primary-color);
+        }
+        .action-item-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+            min-width: 0;
+        }
+        .action-item-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+        .action-item-positions {
+            font-family: monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 10px;
+        }
+        .action-item-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .item-delete-btn {
+            color: #C0B7AD;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .item-delete-btn:hover {
+            color: #FF5F56;
+            background-color: rgba(255, 95, 86, 0.08);
+        }
+
+        /* Playback Status Bar */
+        .footer-row {
+            height: 32px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-color);
+            flex-shrink: 0;
+        }
+        .status-badge {
+            background-color: #E2DCD0;
+            color: var(--text-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 10px;
+            transition: all 0.2s;
+        }
+        .status-badge.active {
+            background-color: #F2DED5;
+            color: var(--primary-color);
+            animation: pulse-terracotta 1.5s infinite;
+        }
+
+        @keyframes pulse-terracotta {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* Active Badge toggle switch */
+        .toggle-switch-badge {
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        /* Dropdown configurations */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            bottom: 40px;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            min-width: 130px;
+            z-index: 100;
+        }
+        .dropdown-item {
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .dropdown-item:hover {
+            background: #FAF6F0;
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- macOS Mock Window Container -->
+    <div class="window">
+        <!-- Titlebar -->
+        <div class="titlebar">
+            <div class="mac-btns">
+                <div class="mac-btn close"></div>
+                <div class="mac-btn minimize"></div>
+                <div class="mac-btn maximize"></div>
+            </div>
+            <div class="title">
+                <!-- SVG Heymandex Icon -->
+                <svg class="header-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 4H8L10 12L8 20H4L6 12L4 4Z" fill="#4A4A4A"/>
+                    <path d="M20 4H16L14 12L16 20H20L18 12L20 4Z" fill="#B87A5A"/>
+                    <path d="M8 12H16" stroke="#4A4A4A" stroke-width="2"/>
+                </svg>
+                RE100 上位机控制软件
+            </div>
+        </div>
+
+        <!-- Window Workspace Content -->
+        <div class="main-content">
+            
+            <!-- Left Card: 16 Joints Slider Control Grid -->
+            <div class="panel-card left-panel">
+                <div class="panel-title">
+                    <div class="title-left">
+                        <span class="title-icon">
+                            <!-- Sliders icon in SVG -->
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="4" y1="21" x2="4" y2="14"></line>
+                                <line x1="4" y1="10" x2="4" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12" y2="3"></line>
+                                <line x1="20" y1="21" x2="20" y2="16"></line>
+                                <line x1="20" y1="12" x2="20" y2="3"></line>
+                                <line x1="1" y1="14" x2="7" y2="14"></line>
+                                <line x1="9" y1="8" x2="15" y2="8"></line>
+                                <line x1="17" y1="16" x2="23" y2="16"></line>
+                            </svg>
+                        </span>
+                        <span>16自由度关节控制</span>
+                    </div>
+                    
+                    <div class="status-indicator">
+                        <span id="statusDot" class="status-dot disconnected"></span>
+                        <span id="statusText">未连接串口</span>
+                    </div>
+                </div>
+
+                <!-- Sliders Grid (16 Joints generated via JS) -->
+                <div class="sliders-container" id="slidersContainer"></div>
+
+                <!-- Bottom Action Controls -->
+                <div class="action-row">
+                    <!-- Connect button -->
+                    <button class="btn btn-purple" id="btnConnect">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 10h-1.25A4.75 4.75 0 0 0 12 5.25v0A4.75 4.75 0 0 0 7.25 10H6a4 4 0 0 0 0 8h12a4 4 0 0 0 0-8z"/>
+                            <path d="M12 18v4"/>
+                            <path d="M8 22h8"/>
+                        </svg>
+                        <span id="btnConnectText">连接串口</span>
+                    </button>
+
+                    <!-- Record pose button -->
+                    <button class="btn btn-terracotta" id="btnRecord">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+                        </svg>
+                        <span>记录动作</span>
+                    </button>
+
+                    <!-- Save sequence dropdown group -->
+                    <div class="btn-split-group">
+                        <button class="btn btn-orange-main btn-split-main" id="btnSave">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                            <span>保存动作序列</span>
+                        </button>
+                        <div class="btn-split-arrow btn-orange-arrow" id="btnSaveArrow">
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="dropdown-menu" id="saveMenu">
+                            <div class="dropdown-item" onclick="alert('16轴配置文件已导出为 config.json')">导出配置文件 (.json)</div>
+                            <div class="dropdown-item" onclick="alert('数据帧已导出为 C 数组格式')">导出 C 语言字节数组</div>
+                        </div>
+                    </div>
+
+                    <!-- Load sequence dropdown group -->
+                    <div class="btn-split-group">
+                        <button class="btn btn-sage-main btn-split-main" id="btnLoad">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>加载动作序列</span>
+                        </button>
+                        <div class="btn-split-arrow btn-sage-arrow" id="btnLoadArrow">
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="dropdown-menu" id="loadMenu">
+                            <div class="dropdown-item" id="btnLoadDemo">载入16轴测试动作</div>
+                            <div class="dropdown-item" onclick="alert('请选择本地动作配置文件加载')">读取本地配置文件...</div>
+                        </div>
+                    </div>
+
+                    <!-- Play execution button -->
+                    <button class="btn btn-red" id="btnPlay">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <span id="btnPlayText">播放动作</span>
+                    </button>
+
+                    <!-- Clear sequence button -->
+                    <button class="btn btn-gray" id="btnClear">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        <span>清空动作</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Card: Action Sequence List -->
+            <div class="panel-card right-panel">
+                <div class="panel-title">
+                    <div class="title-left">
+                        <span class="title-icon" style="color: var(--text-muted);">
+                            <!-- List Bullet SVG -->
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                            </svg>
+                        </span>
+                        <span>动作序列</span>
+                    </div>
+                    <span class="toggle-switch-badge">ON</span>
+                </div>
+
+                <!-- Info Help Subtitle -->
+                <div class="action-list-header">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>点击动作可直接执行到该位置</span>
+                </div>
+
+                <!-- Scrollable Actions Queue -->
+                <div class="sequence-list-container" id="sequenceList">
+                    <!-- Empty State Placeholder -->
+                    <div class="empty-state" id="emptyPlaceholder">
+                        <div class="empty-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+                            </svg>
+                        </div>
+                        <div class="empty-title">暂无动作记录</div>
+                        <div class="empty-subtitle">点击"记录动作"开始添加</div>
+                    </div>
+                </div>
+
+                <!-- Playback Badge Footer -->
+                <div class="footer-row">
+                    <span>播放状态:</span>
+                    <span class="status-badge" id="playBadge">待机中</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JS Control Logic -->
+    <script>
+        // Define 16 joints variables with custom name matching hand structure
+        const JOINTS_INFO = [
+            { id: 1, name: "J1 (拇指偏摆)", min: 0, max: 180, val: 90 },
+            { id: 2, name: "J2 (拇指弯曲)", min: 0, max: 180, val: 90 },
+            { id: 3, name: "J3 (食指第一节)", min: 0, max: 180, val: 90 },
+            { id: 4, name: "J4 (食指第二节)", min: 0, max: 180, val: 90 },
+            { id: 5, name: "J5 (中指第一节)", min: 0, max: 180, val: 90 },
+            { id: 6, name: "J6 (中指第二节)", min: 0, max: 180, val: 90 },
+            { id: 7, name: "J7 (无名指第一节)", min: 0, max: 180, val: 90 },
+            { id: 8, name: "J8 (无名指第二节)", min: 0, max: 180, val: 90 },
+            { id: 9, name: "J9 (小指第一节)", min: 0, max: 180, val: 90 },
+            { id: 10, name: "J10 (小指第二节)", min: 0, max: 180, val: 90 },
+            { id: 11, name: "J11 (手腕偏摆)", min: 0, max: 180, val: 90 },
+            { id: 12, name: "J12 (手腕俯仰)", min: 0, max: 180, val: 90 },
+            { id: 13, name: "J13 (自订通道13)", min: 0, max: 180, val: 90 },
+            { id: 14, name: "J14 (自订通道14)", min: 0, max: 180, val: 90 },
+            { id: 15, name: "J15 (自订通道15)", min: 0, max: 180, val: 90 },
+            { id: 16, name: "J16 (自订通道16)", min: 0, max: 180, val: 90 }
+        ];
+
+        let serialConnected = false;
+        let actionList = [];
+        let isPlaying = false;
+        let playTimer = null;
+        let activeActionIndex = -1;
+
+        const slidersContainer = document.getElementById('slidersContainer');
+
+        // Dynamically populate 16 joints sliders
+        JOINTS_INFO.forEach((joint, idx) => {
+            const row = document.createElement('div');
+            row.className = 'slider-row';
+            row.innerHTML = `
+                <span class="joint-label">${joint.name}</span>
+                <div class="slider-controls">
+                    <span class="slider-label-text">Min:</span>
+                    <input type="number" class="limit-input min-limit" data-idx="${idx}" value="${joint.min}">
+                    
+                    <input type="range" class="joint-slider" data-idx="${idx}" min="${joint.min}" max="${joint.max}" value="${joint.val}">
+                    
+                    <input type="number" class="val-input current-val" data-idx="${idx}" value="${joint.val}">
+                    
+                    <span class="slider-label-text">Max:</span>
+                    <input type="number" class="limit-input max-limit" data-idx="${idx}" value="${joint.max}">
+                </div>
+            `;
+            slidersContainer.appendChild(row);
+        });
+
+        // Set slider active background fills
+        function updateSliderFill(slider) {
+            const min = parseFloat(slider.min) || 0;
+            const max = parseFloat(slider.max) || 180;
+            const val = parseFloat(slider.value) || 0;
+            const percentage = ((val - min) / (max - min)) * 100;
+            slider.style.background = `linear-gradient(to right, var(--primary-color) 0%, var(--primary-color) ${percentage}%, #E2DCD0 ${percentage}%, #E2DCD0 100%)`;
+        }
+
+        // Initialize all slider track fills
+        const sliders = document.querySelectorAll('.joint-slider');
+        sliders.forEach(s => updateSliderFill(s));
+
+        // Two-way bindings and limits
+        const minInputs = document.querySelectorAll('.min-limit');
+        const maxInputs = document.querySelectorAll('.max-limit');
+        const valInputs = document.querySelectorAll('.current-val');
+
+        sliders.forEach((slider, idx) => {
+            slider.addEventListener('input', (e) => {
+                const val = e.target.value;
+                valInputs[idx].value = val;
+                updateSliderFill(slider);
+            });
+        });
+
+        valInputs.forEach((input, idx) => {
+            input.addEventListener('input', (e) => {
+                let val = parseInt(e.target.value) || 0;
+                const min = parseInt(minInputs[idx].value) || 0;
+                const max = parseInt(maxInputs[idx].value) || 180;
+                
+                // Limit range
+                if (val < min) val = min;
+                if (val > max) val = max;
+                
+                sliders[idx].value = val;
+                updateSliderFill(sliders[idx]);
+            });
+            input.addEventListener('blur', (e) => {
+                // Restore value on blur
+                if (e.target.value === '') {
+                    e.target.value = sliders[idx].value;
+                }
+            });
+        });
+
+        minInputs.forEach((input, idx) => {
+            input.addEventListener('change', (e) => {
+                const val = parseInt(e.target.value) || 0;
+                sliders[idx].min = val;
+                updateSliderFill(sliders[idx]);
+            });
+        });
+
+        maxInputs.forEach((input, idx) => {
+            input.addEventListener('change', (e) => {
+                const val = parseInt(e.target.value) || 0;
+                sliders[idx].max = val;
+                updateSliderFill(sliders[idx]);
+            });
+        });
+
+        // 1. Connection Serial Logic
+        const btnConnect = document.getElementById('btnConnect');
+        const btnConnectText = document.getElementById('btnConnectText');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+
+        btnConnect.addEventListener('click', () => {
+            serialConnected = !serialConnected;
+            if (serialConnected) {
+                statusDot.className = 'status-dot connected';
+                statusText.innerText = '已连接串口 (COM3)';
+                btnConnectText.innerText = '断开串口';
+                btnConnect.style.backgroundColor = '#8A857E';
+            } else {
+                statusDot.className = 'status-dot disconnected';
+                statusText.innerText = '未连接串口';
+                btnConnectText.innerText = '连接串口';
+                btnConnect.style.backgroundColor = 'var(--btn-conn)';
+            }
+        });
+
+        // 2. Action Sequence recording
+        const btnRecord = document.getElementById('btnRecord');
+        const sequenceList = document.getElementById('sequenceList');
+        const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+
+        function updateActionListUI() {
+            if (actionList.length === 0) {
+                emptyPlaceholder.style.display = 'flex';
+                // Remove all item cards
+                document.querySelectorAll('.action-item-card').forEach(card => card.remove());
+            } else {
+                emptyPlaceholder.style.display = 'none';
+                
+                // Redraw cards
+                document.querySelectorAll('.action-item-card').forEach(card => card.remove());
+                actionList.forEach((action, index) => {
+                    const card = document.createElement('div');
+                    card.className = `action-item-card ${index === activeActionIndex ? 'active' : ''}`;
+                    card.innerHTML = `
+                        <div class="action-item-left" onclick="moveToAction(${index})">
+                            <span class="action-item-title">动作 #${index + 1}</span>
+                            <span class="action-item-positions">[${action.join(', ')}]</span>
+                        </div>
+                        <div class="action-item-right">
+                            <div class="item-delete-btn" onclick="deleteAction(${index}, event)">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </div>
+                        </div>
+                    `;
+                    sequenceList.appendChild(card);
+                });
+            }
+        }
+
+        btnRecord.addEventListener('click', () => {
+            const currentPositions = [];
+            sliders.forEach(s => currentPositions.push(parseInt(s.value)));
+            actionList.push(currentPositions);
+            updateActionListUI();
+        });
+
+        window.deleteAction = function(index, event) {
+            event.stopPropagation();
+            actionList.splice(index, 1);
+            if (activeActionIndex === index) activeActionIndex = -1;
+            else if (activeActionIndex > index) activeActionIndex--;
+            updateActionListUI();
+        };
+
+        window.moveToAction = function(index) {
+            if (isPlaying) stopPlayback();
+            activeActionIndex = index;
+            const targetPositions = actionList[index];
+            sliders.forEach((s, idx) => {
+                s.value = targetPositions[idx];
+                valInputs[idx].value = targetPositions[idx];
+                updateSliderFill(s);
+            });
+            updateActionListUI();
+        };
+
+        // 3. Serial Playback Simulation
+        const btnPlay = document.getElementById('btnPlay');
+        const btnPlayText = document.getElementById('btnPlayText');
+        const playBadge = document.getElementById('playBadge');
+
+        function startPlayback() {
+            if (actionList.length === 0) {
+                alert('无可播放的动作，请先点击“记录动作”或加载示例。');
+                return;
+            }
+            isPlaying = true;
+            btnPlayText.innerText = '停止播放';
+            playBadge.className = 'status-badge active';
+            playBadge.innerText = '播放中';
+            btnPlay.style.backgroundColor = '#8A857E';
+            
+            let currentStep = 0;
+            activeActionIndex = currentStep;
+            moveToAction(activeActionIndex);
+            
+            playTimer = setInterval(() => {
+                currentStep = (currentStep + 1) % actionList.length;
+                activeActionIndex = currentStep;
+                moveToAction(activeActionIndex);
+            }, 1000);
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            clearInterval(playTimer);
+            btnPlayText.innerText = '播放动作';
+            playBadge.className = 'status-badge';
+            playBadge.innerText = '待机中';
+            btnPlay.style.backgroundColor = 'var(--btn-play)';
+        }
+
+        btnPlay.addEventListener('click', () => {
+            if (isPlaying) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        });
+
+        // 4. Clear actions
+        const btnClear = document.getElementById('btnClear');
+        btnClear.addEventListener('click', () => {
+            if (isPlaying) stopPlayback();
+            actionList = [];
+            activeActionIndex = -1;
+            updateActionListUI();
+        });
+
+        // 5. Split Dropdown menu trigger
+        function bindSplitButton(arrowId, menuId) {
+            const arrow = document.getElementById(arrowId);
+            const menu = document.getElementById(menuId);
+            
+            arrow.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Close other menus first
+                document.querySelectorAll('.dropdown-menu').forEach(m => {
+                    if (m !== menu) m.style.display = 'none';
+                });
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            });
+        }
+
+        bindSplitButton('btnSaveArrow', 'saveMenu');
+        bindSplitButton('btnLoadArrow', 'loadMenu');
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+        });
+
+        // Load 16-joint testing sequence
+        document.getElementById('btnLoadDemo').addEventListener('click', () => {
+            actionList = [
+                [180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180, 180], // Open All
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],                               // Close All
+                [180, 90, 180, 0, 180, 0, 180, 0, 180, 0, 90, 90, 90, 90, 90, 90],             // Mixed
+                [90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90]               // Default Flat
+            ];
+            activeActionIndex = -1;
+            updateActionListUI();
+            alert('成功载入 4 帧 16轴演示测试序列！');
+        });
+    </script>
+</body>
+</html>
