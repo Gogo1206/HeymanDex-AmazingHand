@@ -1,5 +1,7 @@
 ## HeymanDex AmazingHand 工具箱
 
+[English](README.md)
+
 基于 [Pollen Robotics 开源的 AmazingHand](https://github.com/pollen-robotics/AmazingHand) 机械手的多模态控制工具箱，扩展了原有功能。在 Feetech SCS0009 舵机总线之上，通过统一的共享逻辑层，提供语音控制（离线中文语音识别）、摄像头手势识别、Web 控制面板、Qt 原生面板和命令行界面。
 
 ### 项目结构

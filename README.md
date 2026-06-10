@@ -1,5 +1,7 @@
 ## HeymanDex AmazingHand Toolbox
 
+[中文版](README_zh.md)
+
 Multimodal control toolbox extending the [AmazingHand](https://github.com/pollen-robotics/AmazingHand) open-source robot hand by Pollen Robotics. Adds voice control (offline Chinese STT), camera gesture recognition, web panel, Qt native panel, and CLI on top of the Feetech SCS0009 servo bus — all through a shared logic layer.
 
 ### Project Structure
