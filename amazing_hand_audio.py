@@ -27,6 +27,9 @@ import queue
 import sys
 from pathlib import Path
 
+from hand_logic import CONFIG_FILE, DEFAULT_BAUDRATE, default_serial_port
+from amazing_hand_cmd import connect, load_config, apply_pose
+
 # pose name → spoken keywords (primary first, then synonyms). Keys must match
 # pose names in data/hand_config.yaml: open / close / ok / victory.
 POSE_VOCAB: dict[str, list[str]] = {
@@ -142,3 +145,60 @@ class VoiceListener:
     def close(self) -> None:
         self._stream.stop()
         self._stream.close()
+
+
+def run(args) -> None:
+    from pynput import keyboard
+
+    config = load_config(CONFIG_FILE)
+    ctrl = None if args.no_hand else connect(args.serial_port, args.baudrate)
+
+    listener = VoiceListener()
+    speeds = [args.speed] * 8
+
+    def fire(text: str) -> None:
+        pose = match_command(text)
+        if pose is None:
+            print(f"没听清 (heard {text!r}) — no action")
+            return
+        positions = config["poses"][pose]["positions"]
+        if ctrl is not None:
+            try:
+                apply_pose(ctrl, positions, speeds)
+            except Exception as exc:  # noqa: BLE001
+                print(f"send error: {exc}")
+        print(f"SENT {text!r} → pose {pose}")
+
+    def on_press(key) -> None:  # noqa: ANN001
+        if key == keyboard.Key.space and not listener.recording:
+            print("● recording… (release SPACE to send)")
+            listener.start()
+
+    def on_release(key) -> bool | None:  # noqa: ANN001
+        if key == keyboard.Key.esc:
+            return False  # stop the listener → exit
+        if key == keyboard.Key.space and listener.recording:
+            text = listener.stop_and_recognize()
+            fire(text)
+        return None
+
+    print("Voice control running. Hold SPACE to talk, release to send. ESC to quit.")
+    try:
+        with keyboard.Listener(on_press=on_press, on_release=on_release) as kl:
+            kl.join()
+    finally:
+        listener.close()
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Voice (Chinese) hand control")
+    ap.add_argument("--serial-port", default=default_serial_port())
+    ap.add_argument("--baudrate", type=int, default=DEFAULT_BAUDRATE)
+    ap.add_argument("--speed", type=int, default=3, help="servo speed 1-6")
+    ap.add_argument("--no-hand", action="store_true",
+                    help="recognize only; do not open the serial connection")
+    run(ap.parse_args())
+
+
+if __name__ == "__main__":
+    main()
