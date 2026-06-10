@@ -11,6 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+docs/
 downloads/
 eggs/
 .eggs/
@@ -132,3 +133,8 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# MediaPipe model (downloaded on demand, ~7.8MB)
+models/*.task
+# Vosk offline speech model (downloaded on demand, ~42MB)
+models/vosk-model-*/
