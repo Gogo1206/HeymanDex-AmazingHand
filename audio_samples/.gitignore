@@ -1,0 +1,5 @@
+# Audio recordings are local test fixtures — don't commit the (large) wavs,
+# but keep this folder + its README in the repo.
+*.wav
+!.gitignore
+!README.md

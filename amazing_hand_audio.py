@@ -45,6 +45,11 @@ FUZZY_THRESHOLD = 0.6
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "vosk-model-small-cn-0.22"
 SAMPLE_RATE = 16000
 
+# Drop .wav recordings here to test recognition without a live mic. Name each
+# file after the pose it should trigger (e.g. open_1.wav, close_loud.wav) so the
+# test suite can check it — see tests/test_audio_files.py.
+AUDIO_SAMPLES_DIR = Path(__file__).resolve().parent / "audio_samples"
+
 _PUNCT = " 　,，.。!！?？、~"
 
 
@@ -147,6 +152,85 @@ class VoiceListener:
         self._stream.close()
 
 
+def _read_wav_16k_mono(path: Path) -> bytes:
+    """Read a 16-bit PCM WAV and return int16 bytes as 16 kHz mono.
+
+    Stereo is downmixed; any sample rate is linearly resampled to SAMPLE_RATE,
+    so recordings don't have to be pre-converted. Raises ValueError on non
+    16-bit-PCM input (which Vosk can't consume).
+    """
+    import wave
+
+    import numpy as np
+
+    with wave.open(str(path), "rb") as wf:
+        if wf.getsampwidth() != 2:
+            raise ValueError(
+                f"{path.name}: need 16-bit PCM WAV "
+                f"(got sample width {wf.getsampwidth() * 8}-bit)"
+            )
+        channels = wf.getnchannels()
+        rate = wf.getframerate()
+        raw = wf.readframes(wf.getnframes())
+
+    audio = np.frombuffer(raw, dtype=np.int16)
+    if channels > 1:
+        audio = audio.reshape(-1, channels).mean(axis=1).astype(np.int16)
+    if rate != SAMPLE_RATE:
+        n_out = int(round(len(audio) * SAMPLE_RATE / rate))
+        x_old = np.linspace(0.0, 1.0, num=len(audio), endpoint=False)
+        x_new = np.linspace(0.0, 1.0, num=n_out, endpoint=False)
+        audio = np.interp(x_new, x_old, audio).astype(np.int16)
+    return audio.tobytes()
+
+
+def recognize_file(path, model=None) -> str:
+    """Recognize a WAV file offline with Vosk and return the text.
+
+    ``model`` lets a caller reuse one loaded Vosk Model across many files (it is
+    expensive to construct). When omitted, the model at MODEL_PATH is loaded.
+    """
+    from vosk import KaldiRecognizer, Model
+
+    if model is None:
+        if not MODEL_PATH.is_dir():
+            raise FileNotFoundError(f"Vosk model not found at {MODEL_PATH}")
+        model = Model(str(MODEL_PATH))
+    rec = KaldiRecognizer(model, SAMPLE_RATE)
+    rec.AcceptWaveform(_read_wav_16k_mono(Path(path)))
+    return json.loads(rec.FinalResult()).get("text", "")
+
+
+def _audio_mode(path: Path) -> None:
+    """Recognize a WAV file (or every .wav in a directory) and print the match.
+
+    Recognition only — never opens the serial port. Used to test the
+    speech→pose pipeline from recordings instead of a live mic.
+    """
+    from vosk import Model
+
+    if not MODEL_PATH.is_dir():
+        print(f"ERROR: Vosk model not found at {MODEL_PATH}")
+        sys.exit(1)
+    if not path.exists():
+        print(f"ERROR: no such file or directory: {path}")
+        sys.exit(1)
+
+    files = sorted(path.glob("*.wav")) if path.is_dir() else [path]
+    if not files:
+        print(f"No .wav files found in {path}")
+        return
+
+    model = Model(str(MODEL_PATH))
+    for wav in files:
+        try:
+            text = recognize_file(wav, model)
+        except Exception as exc:  # noqa: BLE001
+            print(f"{wav.name}: ERROR {exc}")
+            continue
+        print(f"{wav.name}: heard {text!r} → pose {match_command(text)}")
+
+
 def run(args) -> None:
     from pynput import keyboard
 
@@ -197,7 +281,14 @@ def main() -> None:
     ap.add_argument("--speed", type=int, default=3, help="servo speed 1-6")
     ap.add_argument("--no-hand", action="store_true",
                     help="recognize only; do not open the serial connection")
-    run(ap.parse_args())
+    ap.add_argument("--audio", metavar="PATH",
+                    help="recognize a WAV file or a directory of WAVs instead of "
+                         "the live mic, print the matched pose, and exit")
+    args = ap.parse_args()
+    if args.audio:
+        _audio_mode(Path(args.audio))
+        return
+    run(args)
 
 
 if __name__ == "__main__":
